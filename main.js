@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Disguise Mode (Frontend only)
         const toggleDisguiseMode = () => { state.isDisguiseMode = !state.isDisguiseMode; render(); };
-        window.addEventListener('keydown', e => { if (e.key === 'h') toggleDisguiseMode(); });
+        window.addEventListener('keydown', e => { if (e.key === 'p') toggleDisguiseMode(); });
         let lastShakeTime = 0; window.addEventListener('devicemotion', e => { const { x, y, z } = e.acceleration; if (x === null) return; const acc = Math.sqrt(x*x + y*y + z*z); const now = Date.now(); if (acc > 20 && (now - lastShakeTime > 1000)) { lastShakeTime = now; toggleDisguiseMode(); } });
     };
 
