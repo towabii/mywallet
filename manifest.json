@@ -1,6 +1,6 @@
 {
     "name": "My Wallet",
-    "short_name": "Wallet",
+    "short_name": "My Wallet",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#f4f7f6",
