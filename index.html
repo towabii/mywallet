@@ -8,7 +8,6 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
         <link rel="stylesheet" href="style.css">
-        <!-- PWA: Manifest Link -->
         <link rel="manifest" href="manifest.json">
     </head>
     <body>
@@ -52,67 +51,32 @@
             <div class="app-container">
                 <nav class="sidebar">
                     <div class="sidebar-header">
-                        <h3>
-                            <i class="fas fa-piggy-bank"></i>
-                            My Wallet
-                        </h3>
+                        <h3><i class="fas fa-piggy-bank"></i> My Wallet</h3>
                     </div>
                     <ul>
-                        <li>
-                            <a href="#" class="nav-link active" data-view="dashboard">
-                                <i class="fas fa-home"></i>
-                                <span>ホーム</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="add-transaction">
-                                <i class="fas fa-pen-to-square"></i>
-                                <span>記録</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="transactions">
-                                <i class="fas fa-history"></i>
-                                <span>取引履歴</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="report">
-                                <i class="fas fa-chart-bar"></i>
-                                <span>レポート</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="accounts">
-                                <i class="fas fa-wallet"></i>
-                                <span>口座管理</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="nav-link" data-view="settings">
-                                <i class="fas fa-cog"></i>
-                                <span>設定</span>
-                            </a>
-                        </li>
+                        <li><a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-home"></i> <span>ホーム</span></a></li>
+                        <li><a href="#" class="nav-link" data-view="add-transaction"><i class="fas fa-pen-to-square"></i> <span>記録・調整</span></a></li>
+                        <li><a href="#" class="nav-link" data-view="transactions"><i class="fas fa-history"></i> <span>取引履歴</span></a></li>
+                        <li><a href="#" class="nav-link" data-view="report"><i class="fas fa-chart-bar"></i> <span>レポート</span></a></li>
+                        <li><a href="#" class="nav-link" data-view="accounts"><i class="fas fa-wallet"></i> <span>口座管理</span></a></li>
+                        <li><a href="#" class="nav-link" data-view="settings"><i class="fas fa-cog"></i> <span>設定</span></a></li>
                     </ul>
                 </nav>
                 <main class="main-content">
                     <header class="main-header">
                         <h1 id="main-title">ホーム</h1>
                     </header>
+                    
+                    <!-- ホーム画面 -->
                     <section id="dashboard" class="view active animated-fade-in">
                         <div class="summary-cards">
                             <div class="card">
                                 <h4>総資産</h4>
-                                <p id="total-balance">
-                                    ¥ 0 <span class="balance-diff"></span>
-                                </p>
+                                <p id="total-balance">¥ 0 <span class="balance-diff"></span></p>
                             </div>
                             <div class="card">
                                 <h4>今月の収入</h4>
-                                <p id="monthly-income" class="income-color">
-                                    ¥ 0 <span class="balance-diff"></span>
-                                </p>
+                                <p id="monthly-income" class="income-color">¥ 0 <span class="balance-diff"></span></p>
                             </div>
                             <div class="card">
                                 <h4>今月の支出</h4>
@@ -125,56 +89,129 @@
                         </div>
                         <div class="card">
                             <h3>残高推移</h3>
-                            <div class="chart-container">
-                                <canvas id="balance-chart"></canvas>
-                            </div>
+                            <div class="chart-container"><canvas id="balance-chart"></canvas></div>
                         </div>
                         <div class="card">
-                            <h3>口座別残高</h3>
+                            <h3>口座別現在残高</h3>
                             <ul id="account-balances" class="account-list"></ul>
                         </div>
                     </section>
+
+                    <!-- 記録・調整画面 -->
                     <section id="add-transaction" class="view animated-fade-in">
                         <div class="card form-card">
-                            <form id="transaction-form">
-                                <div class="form-group">
-                                    <label for="date">日付</label>
-                                    <input type="date" id="date" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="category-select">カテゴリ (任意)</label>
-                                    <select id="category-select"></select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="account-select">口座</label>
-                                    <select id="account-select" required></select>
-                                </div>
-                                <div class="form-row">
+                            <div class="tabs">
+                                <button type="button" class="tab-btn active" data-tab="normal">通常記録</button>
+                                <button type="button" class="tab-btn" data-tab="scheduled">予定設定</button>
+                                <button type="button" class="tab-btn" data-tab="adjust">残高調整</button>
+                            </div>
+
+                            <!-- 通常記録タブ -->
+                            <div id="tab-normal" class="tab-content active">
+                                <form id="transaction-form">
                                     <div class="form-group">
-                                        <label for="deposit">入金額</label>
-                                        <input type="number" id="deposit" placeholder="0" min="0">
+                                        <label for="date">日付</label>
+                                        <input type="date" id="date" required>
+                                    </div>
+                                    <div class="form-group radio-group">
+                                        <label>取引の種類</label>
+                                        <div>
+                                            <label><input type="radio" name="tx-type" value="expense" checked> 出金</label>
+                                            <label style="margin-left: 20px;"><input type="radio" name="tx-type" value="income"> 入金</label>
+                                        </div>
                                     </div>
                                     <div class="form-group">
-                                        <label for="withdrawal">出金額</label>
-                                        <input type="number" id="withdrawal" placeholder="0" min="0">
+                                        <label for="account-select">口座</label>
+                                        <select id="account-select" required></select>
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="memo">メモ</label>
-                                    <input type="text" id="memo" placeholder="例: ランチ代">
-                                </div>
-                                <button type="submit">この内容で記録する</button>
-                            </form>
+                                    <div class="form-group">
+                                        <label for="category-select">カテゴリ (任意)</label>
+                                        <select id="category-select"></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="tx-amount">金額</label>
+                                        <input type="number" id="tx-amount" placeholder="0" min="1" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="memo">メモ</label>
+                                        <input type="text" id="memo" placeholder="例: ランチ代、給料など">
+                                    </div>
+                                    <button type="submit"><i class="fas fa-check"></i> この内容で記録する</button>
+                                </form>
+                            </div>
+
+                            <!-- 予定設定タブ -->
+                            <div id="tab-scheduled" class="tab-content">
+                                <form id="scheduled-form">
+                                    <p class="tab-desc">未来の入出金予定を登録します。実行するまで残高には反映されません。</p>
+                                    <div class="form-group">
+                                        <label for="scheduled-date">実行予定日</label>
+                                        <input type="date" id="scheduled-date" required>
+                                    </div>
+                                    <div class="form-group radio-group">
+                                        <label>取引の種類</label>
+                                        <div>
+                                            <label><input type="radio" name="scheduled-type" value="expense" checked> 出金</label>
+                                            <label style="margin-left: 20px;"><input type="radio" name="scheduled-type" value="income"> 入金</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scheduled-account-select">対象口座</label>
+                                        <select id="scheduled-account-select" required></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scheduled-category-select">カテゴリ (任意)</label>
+                                        <select id="scheduled-category-select"></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scheduled-amount">予定金額</label>
+                                        <input type="number" id="scheduled-amount" placeholder="0" min="1" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scheduled-memo">メモ</label>
+                                        <input type="text" id="scheduled-memo" placeholder="例: クレジットカード引き落とし">
+                                    </div>
+                                    <button type="submit" style="background-color: #f39c12;"><i class="fas fa-calendar-alt"></i> 予定として登録する</button>
+                                </form>
+                            </div>
+
+                            <!-- 残高調整タブ -->
+                            <div id="tab-adjust" class="tab-content">
+                                <form id="adjust-form">
+                                    <p class="tab-desc">実際の残高を入力すると、アプリ上の残高との差額を自動計算して調整記録を作成します。</p>
+                                    <div class="form-group">
+                                        <label for="adjust-account-select">対象口座</label>
+                                        <select id="adjust-account-select" required></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>アプリ上の現在の残高</label>
+                                        <div id="current-app-balance" class="readonly-value">¥ 0</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="actual-balance">実際の残高を入力</label>
+                                        <input type="number" id="actual-balance" placeholder="0" required>
+                                    </div>
+                                    <button type="submit" style="background-color: #9b59b6;"><i class="fas fa-balance-scale"></i> 差額を調整する</button>
+                                </form>
+                            </div>
                         </div>
                     </section>
+
+                    <!-- 取引履歴画面 -->
                     <section id="transactions" class="view animated-fade-in">
                         <div class="card">
-                            <h3>取引履歴</h3>
-                            <div class="month-filter-container" id="month-filter-container"></div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                                <h3 style="margin: 0; border: none; padding: 0;">取引履歴</h3>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label for="month-dropdown" style="font-weight: bold; font-size: 0.9em; color: #555;">期間:</label>
+                                    <select id="month-dropdown" class="form-control" style="width: auto; padding: 5px 10px;"></select>
+                                </div>
+                            </div>
                             <div class="table-wrapper">
                                 <table id="history-table">
                                     <thead>
                                         <tr>
+                                            <th>状態</th>
                                             <th>日付</th>
                                             <th>カテゴリ</th>
                                             <th>口座</th>
@@ -190,14 +227,25 @@
                             </div>
                         </div>
                     </section>
+
+                    <!-- レポート画面 -->
                     <section id="report" class="view animated-fade-in">
                         <div class="card">
-                            <h3>月毎の収入・支出</h3>
-                            <div class="chart-container">
-                                <canvas id="report-chart"></canvas>
+                            <h3>全期間の月毎収入・支出推移</h3>
+                            <div class="chart-container"><canvas id="report-chart"></canvas></div>
+                        </div>
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                                <h3 style="margin: 0; border: none; padding: 0;">カテゴリ別支出割合</h3>
+                                <select id="report-month-dropdown" class="form-control" style="width: auto; padding: 5px 10px;"></select>
+                            </div>
+                            <div class="chart-container" style="min-height: 280px;">
+                                <canvas id="category-chart"></canvas>
                             </div>
                         </div>
                     </section>
+
+                    <!-- 口座管理画面 -->
                     <section id="accounts" class="view animated-fade-in">
                         <div class="content-grid">
                             <div class="card">
@@ -232,10 +280,30 @@
                             </div>
                         </div>
                     </section>
+
+                    <!-- 設定画面 -->
                     <section id="settings" class="view animated-fade-in">
                         <div class="content-grid">
+                            <div class="card form-card">
+                                <h3>新しいカテゴリを追加</h3>
+                                <form id="add-category-form">
+                                    <div class="form-group">
+                                        <label for="category-name">カテゴリ名</label>
+                                        <input type="text" id="category-name" placeholder="食事、交通費など" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="category-color">テーマカラー</label>
+                                        <input type="color" id="category-color" value="#3498db">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="category-account-link">紐付けるデフォルト口座 (任意)</label>
+                                        <select id="category-account-link"></select>
+                                    </div>
+                                    <button type="submit">カテゴリを追加する</button>
+                                </form>
+                            </div>
                             <div class="card">
-                                <h3>カテゴリ管理</h3>
+                                <h3>カテゴリ一覧</h3>
                                 <div class="table-wrapper">
                                     <table id="categories-table">
                                         <thead>
@@ -249,26 +317,8 @@
                                     </table>
                                 </div>
                             </div>
-                            <div class="card form-card">
-                                <h3>新しいカテゴリを追加</h3>
-                                <form id="add-category-form">
-                                    <div class="form-group">
-                                        <label for="category-name">カテゴリ名</label>
-                                        <input type="text" id="category-name" placeholder="食事、交通費など" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="category-color">色</label>
-                                        <input type="color" id="category-color" value="#3498db">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="category-account-link">紐付ける口座 (任意)</label>
-                                        <select id="category-account-link"></select>
-                                    </div>
-                                    <button type="submit">追加する</button>
-                                </form>
-                            </div>
                         </div>
-                        <div class="card">
+                        <div class="card mt-20">
                             <h3>アカウント設定</h3>
                             <form id="change-email-form" class="setting-form">
                                 <label>メールアドレス変更</label>
@@ -295,7 +345,6 @@
                             </form>
                             <form id="show-backup-key-form" class="setting-form">
                                 <label>バックアップキーの確認</label>
-                                <p>パスワードを入力してバックアップキーを表示します。</p>
                                 <div class="form-group">
                                     <input type="password" id="show-backup-key-password" placeholder="現在のパスワード" required>
                                 </div>
@@ -307,33 +356,18 @@
                     <footer>&copy;とわ</footer>
                 </main>
             </div>
+            
+            <!-- モバイル用ナビゲーション -->
             <nav class="mobile-nav">
-                <a href="#" class="nav-link active" data-view="dashboard">
-                    <i class="fas fa-home"></i>
-                    <span>ホーム</span>
-                </a>
-                <a href="#" class="nav-link" data-view="add-transaction">
-                    <i class="fas fa-pen-to-square"></i>
-                    <span>記録</span>
-                </a>
-                <a href="#" class="nav-link" data-view="transactions">
-                    <i class="fas fa-history"></i>
-                    <span>履歴</span>
-                </a>
-                <a href="#" class="nav-link" data-view="report">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>レポート</span>
-                </a>
-                <a href="#" class="nav-link" data-view="accounts">
-                    <i class="fas fa-wallet"></i>
-                    <span>口座</span>
-                </a>
-                <a href="#" class="nav-link" data-view="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>設定</span>
-                </a>
+                <a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-home"></i><span>ホーム</span></a>
+                <a href="#" class="nav-link" data-view="add-transaction"><i class="fas fa-pen-to-square"></i><span>記録</span></a>
+                <a href="#" class="nav-link" data-view="transactions"><i class="fas fa-history"></i><span>履歴</span></a>
+                <a href="#" class="nav-link" data-view="report"><i class="fas fa-chart-bar"></i><span>レポート</span></a>
+                <a href="#" class="nav-link" data-view="accounts"><i class="fas fa-wallet"></i><span>口座</span></a>
+                <a href="#" class="nav-link" data-view="settings"><i class="fas fa-cog"></i><span>設定</span></a>
             </nav>
         </div>
+
         <!-- Modals -->
         <div id="backup-key-modal" class="modal-overlay">
             <div class="modal-content animated-zoom-in">
@@ -341,15 +375,14 @@
                 <p>パスワード変更時に必要です。必ず安全な場所に保管してください。</p>
                 <div class="backup-key-wrapper">
                     <p id="new-backup-key" class="backup-key"></p>
-                    <button id="copy-backup-key-btn">
-                        <i class="fas fa-copy"></i>
-                    </button>
+                    <button id="copy-backup-key-btn"><i class="fas fa-copy"></i></button>
                 </div>
                 <div class="modal-actions">
                     <button id="close-backup-key-modal">OK</button>
                 </div>
             </div>
         </div>
+
         <div id="edit-modal" class="modal-overlay">
             <div class="modal-content animated-zoom-in">
                 <h3>取引を編集</h3>
@@ -359,35 +392,37 @@
                         <label for="edit-date">日付</label>
                         <input type="date" id="edit-date" required>
                     </div>
-                    <div class="form-group">
-                        <label for="edit-category-select">カテゴリ</label>
-                        <select id="edit-category-select"></select>
+                    <div class="form-group radio-group">
+                        <label>取引の種類</label>
+                        <div>
+                            <label><input type="radio" name="edit-tx-type" value="expense"> 出金</label>
+                            <label style="margin-left: 20px;"><input type="radio" name="edit-tx-type" value="income"> 入金</label>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="edit-account-select">口座</label>
                         <select id="edit-account-select" required></select>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="edit-deposit">入金</label>
-                            <input type="number" id="edit-deposit" min="0" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-withdrawal">出金</label>
-                            <input type="number" id="edit-withdrawal" min="0" value="0">
-                        </div>
+                    <div class="form-group">
+                        <label for="edit-category-select">カテゴリ</label>
+                        <select id="edit-category-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-amount">金額</label>
+                        <input type="number" id="edit-amount" min="0" required>
                     </div>
                     <div class="form-group">
                         <label for="edit-memo">メモ</label>
                         <input type="text" id="edit-memo">
                     </div>
                     <div class="modal-actions">
-                        <button type="button" id="cancel-edit-btn">キャンセル</button>
+                        <button type="button" id="cancel-edit-btn" class="cancel-btn">キャンセル</button>
                         <button type="submit">保存する</button>
                     </div>
                 </form>
             </div>
         </div>
+
         <div id="edit-account-modal" class="modal-overlay">
             <div class="modal-content animated-zoom-in">
                 <h3>口座名を編集</h3>
@@ -398,12 +433,13 @@
                         <input type="text" id="edit-account-name" required>
                     </div>
                     <div class="modal-actions">
-                        <button type="button" id="cancel-edit-account-btn">キャンセル</button>
+                        <button type="button" id="cancel-edit-account-btn" class="cancel-btn">キャンセル</button>
                         <button type="submit">保存する</button>
                     </div>
                 </form>
             </div>
         </div>
+
         <div id="edit-category-modal" class="modal-overlay">
             <div class="modal-content animated-zoom-in">
                 <h3>カテゴリを編集</h3>
@@ -418,33 +454,26 @@
                         <input type="color" id="edit-category-color">
                     </div>
                     <div class="form-group">
-                        <label for="edit-category-account-link">紐付ける口座</label>
+                        <label for="edit-category-account-link">紐付けるデフォルト口座</label>
                         <select id="edit-category-account-link"></select>
                     </div>
                     <div class="modal-actions">
-                        <button type="button" id="cancel-edit-category-btn">キャンセル</button>
+                        <button type="button" id="cancel-edit-category-btn" class="cancel-btn">キャンセル</button>
                         <button type="submit">保存する</button>
                     </div>
                 </form>
             </div>
         </div>
+
         <div id="loading-overlay">
             <div class="spinner"></div>
         </div>
         <script src="main.js"></script>
-        <!-- PWA: Service Worker Registration -->
         <script>
             if ('serviceWorker'in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    }
-                    , err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    }
-                    );
-                }
-                );
+                    navigator.serviceWorker.register('/sw.js').then(r => console.log('SW Registered')).catch(e => console.log('SW Error:', e));
+                });
             }
         </script>
     </body>
