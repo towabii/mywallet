@@ -64,10 +64,9 @@ footer { text-align: center; padding: 20px; color: #999; font-size: 0.9em; margi
 .progress-bar-bg { width: 100%; height: 14px; background: #ecf0f1; border-radius: 7px; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.6s ease; }
 
-/* Tabs Grid (スマホ横スクロール対応) */
-.tabs-grid { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 10px; margin-bottom: 25px; scrollbar-width: none; }
-.tabs-grid::-webkit-scrollbar { display: none; }
-.tab-btn { flex: 0 0 auto; white-space: nowrap; background: #f4f7f6; border: none; border-radius: 8px; padding: 12px 20px; font-size: 1em; font-weight: bold; color: #7f8c8d; cursor: pointer; transition: 0.2s; }
+/* Tabs Grid */
+.tabs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 25px; }
+.tab-btn { background: #f4f7f6; border: none; border-radius: 8px; padding: 12px 10px; font-size: 1em; font-weight: bold; color: #7f8c8d; cursor: pointer; transition: 0.2s; text-align: center; }
 .tab-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 8px rgba(52,152,219,0.3); }
 .tab-content { display: none; } .tab-content.active { display: block; }
 .tab-desc { font-size: 0.9em; color: #7f8c8d; margin-bottom: 20px; padding: 12px; background: #fdfdfd; border-left: 4px solid var(--primary-color); }
@@ -126,28 +125,10 @@ tr:hover { background-color: #fafafa; }
 .stock-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; color: #555; margin-bottom: 15px; }
 .stock-actions { display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #f4f7f6; padding-top: 15px; }
 
-/* Mobile Nav (横スクロール対応) */
+/* Mobile Nav */
 .mobile-nav { 
-    display: none; position: fixed; bottom: 0; left:0; width: 100%; height: var(--mobile-nav-height); 
+    display: none; position: fixed; bottom: 0; left:0; width: 100%; 
     background: var(--card-bg-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 99; 
-}
-@media (max-width: 768px) {
-    .mobile-nav { 
-        display: flex; 
-        overflow-x: auto; 
-        -webkit-overflow-scrolling: touch; 
-        scrollbar-width: none; 
-        align-items: center;
-        padding: 0 5px;
-    }
-    .mobile-nav::-webkit-scrollbar { display: none; }
-    .mobile-nav a { 
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        color: #a4b0be; text-decoration: none; font-size: 0.65em; font-weight: bold;
-        flex: 0 0 auto; min-width: 65px; height: 100%;
-    }
-    .mobile-nav a.active { color: var(--primary-color); }
-    .mobile-nav a i { font-size: 1.3em; margin-bottom: 3px; }
 }
 
 /* Modal */
@@ -160,7 +141,6 @@ tr:hover { background-color: #fafafa; }
 /* Responsive */
 @media (min-width: 769px) {
     .content-grid { grid-template-columns: 1fr 1fr; }
-    /* PCでのタブは横並びにするためGridに戻すか、Flexのままにする。FlexのままでOK */
 }
 @media (max-width: 768px) {
     body { padding-bottom: var(--mobile-nav-height); padding-top: 65px; }
@@ -168,11 +148,34 @@ tr:hover { background-color: #fafafa; }
     .main-content { margin-left: 0; width: 100%; padding: 15px; }
     .main-header { position: fixed; top: 0; left: 0; width: 100%; background: var(--card-bg-color); padding: 15px; z-index: 98; text-align: center; margin: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     
-    /* 収入・支出のカードがスマホでも綺麗に2列に並ぶように */
+    /* ご指定の通り、スマホ時は要素を確実に縦1列に並べ、順序を保証します */
+    .content-grid { display: flex; flex-direction: column; gap: 15px; }
+
+    /* 収入・支出カードをスマホでも綺麗に2列に */
     .summary-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .summary-cards .card { padding: 15px; }
-    .summary-cards .card p { font-size: 1.25em; } /* フォントサイズを少し下げてはみ出し防止 */
+    .summary-cards .card p { font-size: 1.25em; } 
     
+    /* 記録画面のタブを2行に折り返し (横スクロールを廃止) */
+    .tabs-grid { grid-template-columns: 1fr 1fr; }
+    
+    /* モバイルナビを1行に横に詰めて表示 (横スクロール・2段表示を廃止) */
+    .mobile-nav { 
+        display: flex; 
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        height: var(--mobile-nav-height);
+        padding: 0 2px;
+    }
+    .mobile-nav a { 
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #a4b0be; text-decoration: none; font-size: 0.55em; font-weight: bold;
+        flex: 1; padding: 0; white-space: nowrap;
+    }
+    .mobile-nav a.active { color: var(--primary-color); }
+    .mobile-nav a i { font-size: 1.3em; margin-bottom: 2px; }
+
     .card { padding: 18px; }
     button { padding: 12px; font-size: 1em; }
     th, td { padding: 10px 8px; font-size: 0.9em; }
