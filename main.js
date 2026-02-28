@@ -1,4 +1,4 @@
-const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwKT9eMppIlTxIV0ULDQ_-ijXd6wLv2uTRTntbfoTZ-YgMVzdQ2o9HPdt6xHTwYU14/exec';
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxMFVyn-3Q-_ycsrEAabfBr-nhFFd-r_CD3915MPXORpEdbJTn3pu9mp3qQcAZadnMB/exec';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- STATE ---
