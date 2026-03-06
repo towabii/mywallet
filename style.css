@@ -64,8 +64,14 @@ footer { text-align: center; padding: 20px; color: #999; font-size: 0.9em; margi
 .progress-bar-bg { width: 100%; height: 14px; background: #ecf0f1; border-radius: 7px; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.6s ease; }
 
+/* Account List (現金残高用) */
+.account-list { list-style: none; padding: 0; margin: 0; }
+.account-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 1.1em; }
+.account-list li:last-child { border-bottom: none; }
+.account-list li span:first-child { font-weight: bold; color: var(--secondary-color); }
+
 /* Tabs Grid */
-.tabs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 25px; }
+.tabs-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 25px; }
 .tab-btn { background: #f4f7f6; border: none; border-radius: 8px; padding: 12px 10px; font-size: 1em; font-weight: bold; color: #7f8c8d; cursor: pointer; transition: 0.2s; text-align: center; }
 .tab-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 8px rgba(52,152,219,0.3); }
 .tab-content { display: none; } .tab-content.active { display: block; }
@@ -74,8 +80,9 @@ footer { text-align: center; padding: 20px; color: #999; font-size: 0.9em; margi
 /* Form Elements */
 .form-group { margin-bottom: 18px; }
 .form-group label { display: block; margin-bottom: 8px; font-size: 0.95em; font-weight: bold; color: #444; }
-input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], select { width: 100%; padding: 12px; border: 1px solid #dcdde1; border-radius: 6px; font-size: 1em; background-color: #fdfdfd; transition: 0.2s; }
-input:focus, select:focus { border-color: var(--primary-color); outline: none; background-color: #fff; }
+input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], select, textarea { width: 100%; padding: 12px; border: 1px solid #dcdde1; border-radius: 6px; font-size: 1em; background-color: #fdfdfd; transition: 0.2s; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary-color); outline: none; background-color: #fff; }
+textarea { resize: vertical; }
 input[type="color"] { padding: 2px; height: 45px; cursor: pointer; }
 .radio-group div { display: flex; align-items: center; }
 .radio-group label { font-weight: normal; margin: 0; cursor: pointer; display: flex; align-items: center; }
@@ -109,21 +116,51 @@ tr:hover { background-color: #fafafa; }
 .income-color { color: var(--income-color) !important; font-weight: bold; }
 .expense-color { color: var(--expense-color) !important; font-weight: bold; }
 
-/* Stock Search & Cards */
-.search-results-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dcdde1; border-radius: 0 0 6px 6px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); z-index: 10; max-height: 200px; overflow-y: auto; list-style: none; padding: 0; margin: 0; display: none; }
-.search-results-dropdown li { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.95em; }
-.search-results-dropdown li:hover { background-color: #f4f7f6; color: var(--primary-color); }
+/* Calendar Modal Custom UI */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-day-header { font-size: 0.8em; font-weight: bold; color: #7f8c8d; padding: 5px 0; }
+.cal-cell { padding: 10px 0; border-radius: 6px; background: #fdfdfd; border: 1px solid #eee; cursor: pointer; font-size: 0.95em; transition: 0.2s; user-select: none; }
+.cal-cell:hover { background: #ecf0f1; }
+.cal-cell.empty { background: transparent; border: none; cursor: default; }
+.cal-cell.include { background: var(--income-color); color: white; border-color: var(--income-color); }
+.cal-cell.exclude { background: var(--expense-color); color: white; border-color: var(--expense-color); }
+.cal-cell.period { background: #f5b7b1; color: white; border-color: #f5b7b1; border-radius: 0; }
+.cal-cell.period-start { border-radius: 6px 0 0 6px; background: var(--expense-color); border-color: var(--expense-color); }
+.cal-cell.period-end { border-radius: 0 6px 6px 0; background: var(--expense-color); border-color: var(--expense-color); }
+.cal-cell.period-single { border-radius: 6px; background: var(--expense-color); border-color: var(--expense-color); }
 
-.stock-list { display: flex; flex-direction: column; gap: 15px; }
-.stock-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-.stock-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #f4f7f6; padding-bottom: 12px; margin-bottom: 12px; }
-.stock-title strong { font-size: 1.2em; color: var(--secondary-color); display: block; }
-.stock-title small { color: #95a5a6; font-size: 0.85em; }
-.stock-current-price { text-align: right; }
-.stock-current-price .price { font-size: 1.3em; font-weight: bold; display: block; }
-.stock-current-price .change { font-size: 0.9em; font-weight: bold; }
-.stock-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9em; color: #555; margin-bottom: 15px; }
-.stock-actions { display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #f4f7f6; padding-top: 15px; }
+/* History Calendar Custom UI */
+.hist-cal-cell {
+    padding: 5px;
+    border-radius: 6px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    font-size: 0.9em;
+}
+.hist-cal-date {
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: left;
+    color: var(--secondary-color);
+}
+.hist-cal-inc {
+    color: var(--income-color);
+    font-size: 0.8em;
+    text-align: right;
+    margin-bottom: 2px;
+    font-weight: bold;
+}
+.hist-cal-exp {
+    color: var(--expense-color);
+    font-size: 0.8em;
+    text-align: right;
+    font-weight: bold;
+}
 
 /* Mobile Nav */
 .mobile-nav { 
@@ -148,22 +185,19 @@ tr:hover { background-color: #fafafa; }
     .main-content { margin-left: 0; width: 100%; padding: 15px; }
     .main-header { position: fixed; top: 0; left: 0; width: 100%; background: var(--card-bg-color); padding: 15px; z-index: 98; text-align: center; margin: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     
-    /* ご指定の通り、スマホ時は要素を確実に縦1列に並べ、順序を保証します */
     .content-grid { display: flex; flex-direction: column; gap: 15px; }
 
-    /* 収入・支出カードをスマホでも綺麗に2列に */
     .summary-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .summary-cards .card { padding: 15px; }
     .summary-cards .card p { font-size: 1.25em; } 
     
-    /* 記録画面のタブを2行に折り返し (横スクロールを廃止) */
-    .tabs-grid { grid-template-columns: 1fr 1fr; }
+    .tabs-grid { display: flex; flex-wrap: wrap; }
+    .tabs-grid .tab-btn { flex: 1 1 30%; font-size: 0.9em; padding: 8px; }
     
-    /* モバイルナビを1行に横に詰めて表示 (横スクロール・2段表示を廃止) */
     .mobile-nav { 
         display: flex; 
         flex-direction: row;
-        justify-content: space-between;
+        justify-content: space-around;
         align-items: center;
         height: var(--mobile-nav-height);
         padding: 0 2px;
@@ -179,4 +213,16 @@ tr:hover { background-color: #fafafa; }
     .card { padding: 18px; }
     button { padding: 12px; font-size: 1em; }
     th, td { padding: 10px 8px; font-size: 0.9em; }
+
+    .hist-cal-cell {
+        min-height: 60px;
+        padding: 2px;
+    }
+    .hist-cal-date {
+        font-size: 0.85em;
+    }
+    .hist-cal-inc, .hist-cal-exp {
+        font-size: 0.65em;
+        word-break: break-all;
+    }
 }

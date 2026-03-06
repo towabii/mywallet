@@ -42,7 +42,6 @@
                     <li><a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-home"></i> <span>ホーム</span></a></li>
                     <li><a href="#" class="nav-link" data-view="add-transaction"><i class="fas fa-pen-to-square"></i> <span>記録・振替</span></a></li>
                     <li><a href="#" class="nav-link" data-view="transactions"><i class="fas fa-history"></i> <span>取引履歴</span></a></li>
-                    <li><a href="#" class="nav-link" data-view="stocks"><i class="fas fa-chart-line"></i> <span>株式管理</span></a></li>
                     <li><a href="#" class="nav-link" data-view="report"><i class="fas fa-chart-pie"></i> <span>レポート</span></a></li>
                     <li><a href="#" class="nav-link" data-view="accounts"><i class="fas fa-wallet"></i> <span>口座管理</span></a></li>
                     <li><a href="#" class="nav-link" data-view="settings"><i class="fas fa-cog"></i> <span>設定</span></a></li>
@@ -54,8 +53,8 @@
                 <!-- ホーム画面 -->
                 <section id="dashboard" class="view active animated-fade-in">
                     <div class="summary-cards">
-                        <div class="card total-card"><h4>総資産 (口座＋株式)</h4><p id="total-balance">¥ 0</p></div>
-                        <div class="card"><h4>株式評価額</h4><p id="stock-balance">¥ 0</p></div>
+                        <div class="card total-card"><h4>総資産</h4><p id="total-balance">¥ 0</p></div>
+                        <div class="card"><h4>支払予定金額</h4><p id="scheduled-expense" class="expense-color">¥ 0</p></div>
                         <div class="card"><h4>今月の収入</h4><p id="monthly-income" class="income-color">¥ 0 <span class="balance-diff"></span></p></div>
                         <div class="card"><h4>今月の支出</h4><p id="monthly-expense" class="expense-color">¥ 0</p></div>
                     </div>
@@ -82,6 +81,7 @@
                             <button type="button" class="tab-btn active" data-tab="normal">通常記録</button>
                             <button type="button" class="tab-btn" data-tab="transfer">口座振替</button>
                             <button type="button" class="tab-btn" data-tab="scheduled">予定設定</button>
+                            <button type="button" class="tab-btn" data-tab="recurring">定期・分割</button>
                             <button type="button" class="tab-btn" data-tab="adjust">残高調整</button>
                         </div>
 
@@ -112,10 +112,10 @@
                                 <button type="submit" style="background-color: #2c3e50;"><i class="fas fa-exchange-alt"></i> 振替を実行</button>
                             </form>
                         </div>
-                        <!-- 予定設定 -->
+                        <!-- 予定設定 (単発) -->
                         <div id="tab-scheduled" class="tab-content">
                             <form id="scheduled-form">
-                                <p class="tab-desc">未来の予定を登録。実行するまで残高に反映されません。</p>
+                                <p class="tab-desc">未来の予定を単発で登録。実行するまで残高に反映されません。</p>
                                 <div class="form-group"><label>実行予定日</label><input type="date" id="scheduled-date" required></div>
                                 <div class="form-group radio-group">
                                     <label>種類</label>
@@ -126,6 +126,106 @@
                                 <div class="form-group"><label>予定金額</label><input type="number" id="scheduled-amount" min="1" required></div>
                                 <div class="form-group"><label>メモ</label><input type="text" id="scheduled-memo"></div>
                                 <button type="submit" style="background-color: #f39c12;"><i class="fas fa-calendar-alt"></i> 予定登録</button>
+                            </form>
+                        </div>
+                        <!-- 定期・分割設定 -->
+                        <div id="tab-recurring" class="tab-content">
+                            <form id="recurring-form">
+                                <p class="tab-desc">定期的な支払いや、総額の分割払い予定を一括生成します。</p>
+                                
+                                <div class="form-group" style="background: #f4f7f6; padding:15px; border-radius:8px; border:1px solid #e1e8ed;">
+                                    <label style="color: var(--secondary-color); font-size: 1.05em;"><i class="fas fa-coins"></i> 金額の設定</label>
+                                    <div class="form-group radio-group mt-20" style="margin-bottom: 15px;">
+                                        <div>
+                                            <label><input type="radio" name="rec-amt-type" value="fixed" checked> 毎回同じ金額（定期）</label>
+                                            <label style="margin-left: 20px;"><input type="radio" name="rec-amt-type" value="split"> 総額を回数で均等分割</label>
+                                        </div>
+                                    </div>
+                                    <div id="rec-amt-fixed-wrapper">
+                                        <label>1回あたりの金額</label>
+                                        <input type="number" id="rec-amount-fixed" min="1">
+                                    </div>
+                                    <div id="rec-amt-split-wrapper" style="display:none;">
+                                        <label>総額</label>
+                                        <input type="number" id="rec-amount-total" min="1" placeholder="生成された回数で割り勘します">
+                                    </div>
+                                </div>
+
+                                <div class="form-group radio-group mt-20">
+                                    <label>種類</label>
+                                    <div><label><input type="radio" name="rec-type" value="expense" checked> 出金</label><label style="margin-left: 20px;"><input type="radio" name="rec-type" value="income"> 入金</label></div>
+                                </div>
+                                <div class="form-group"><label>口座</label><select id="rec-account-select" required></select></div>
+                                <div class="form-group"><label>カテゴリ</label><select id="rec-category-select"></select></div>
+
+                                <div class="form-group mt-20" style="background: #f4f7f6; padding:15px; border-radius:8px; border:1px solid #e1e8ed;">
+                                    <label style="color: var(--secondary-color); font-size: 1.05em;"><i class="fas fa-calendar-alt"></i> スケジュールの設定</label>
+                                    
+                                    <div class="content-grid mt-20" style="gap:10px; margin-bottom: 15px;">
+                                        <div class="form-group"><label>開始日</label><input type="date" id="rec-start-date" required></div>
+                                        <div class="form-group"><label>終了日</label><input type="date" id="rec-end-date" required></div>
+                                    </div>
+
+                                    <label style="font-weight: bold; color: #2c3e50;">基本の繰り返しルール</label>
+                                    <select id="rec-rule-base" style="margin-bottom:15px; border: 1px solid var(--primary-color);">
+                                        <option value="daily">毎日 (休まず連続)</option>
+                                        <option value="weekday">平日のみ (月曜〜金曜)</option>
+                                        <option value="weekend">休日のみ (土曜・日曜)</option>
+                                        <option value="weekly">毎週特定の曜日 (チェックボックスで選択)</option>
+                                        <option value="monthly">毎月特定の日 (例：毎月25日)</option>
+                                        <option value="custom">指定日のみ (カレンダーで選んだ追加日のみ)</option>
+                                    </select>
+
+                                    <div id="rec-weekly-opts" style="display:none; margin-bottom:15px;">
+                                        <label>曜日指定</label>
+                                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                            <label><input type="checkbox" name="rec-dow" value="1">月</label>
+                                            <label><input type="checkbox" name="rec-dow" value="2">火</label>
+                                            <label><input type="checkbox" name="rec-dow" value="3">水</label>
+                                            <label><input type="checkbox" name="rec-dow" value="4">木</label>
+                                            <label><input type="checkbox" name="rec-dow" value="5">金</label>
+                                            <label><input type="checkbox" name="rec-dow" value="6">土</label>
+                                            <label><input type="checkbox" name="rec-dow" value="0">日</label>
+                                        </div>
+                                    </div>
+                                    <div id="rec-monthly-opts" style="display:none; margin-bottom:15px;">
+                                        <label>毎月の日付 (例: 25)</label>
+                                        <input type="number" id="rec-monthly-date" min="1" max="31">
+                                    </div>
+                                    
+                                    <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
+                                    <p style="font-size:0.85em; color:#7f8c8d; margin-bottom:10px;">休日の調整やカスタムスケジュールがある場合は以下に設定</p>
+                                    
+                                    <button type="button" id="open-calendar-modal-btn" style="background-color: var(--primary-color); margin-bottom: 10px; width: 100%;"><i class="fas fa-calendar-check"></i> カレンダーで追加・除外日を直感的に設定</button>
+                                    
+                                    <button type="button" id="toggle-manual-dates-btn" style="background-color: #fdfdfd; color: #7f8c8d; border: 1px dashed #ccc; width: 100%; margin-bottom: 15px; font-size: 0.9em; padding: 10px;"><i class="fas fa-edit"></i> 文字で直接入力する（高度な設定を開く）</button>
+
+                                    <div id="manual-dates-container" style="display: none; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px;">
+                                        <div class="form-group">
+                                            <label>特別追加日 (カスタム支払日)</label>
+                                            <textarea id="rec-include-dates" rows="2" placeholder="例: 2026-01-01&#13;&#10;2026-02-15"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>単発の除外日</label>
+                                            <textarea id="rec-exclude-dates" rows="2" placeholder="例: 2026-05-05&#13;&#10;2026-12-31"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>長期除外期間 (長期休暇など)</label>
+                                            <textarea id="rec-exclude-periods" rows="2" placeholder="例: 2026-04-29〜2026-05-05&#13;&#10;2026-12-28〜2027-01-03"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group radio-group mt-20">
+                                    <label>完了の扱い</label>
+                                    <div>
+                                        <label><input type="radio" name="rec-auto" value="manual" checked> 手動で完了（予定として残る）</label>
+                                        <label style="margin-left: 20px;"><input type="radio" name="rec-auto" value="auto"> 日付到達で自動完了</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group"><label>メモ</label><input type="text" id="rec-memo" placeholder="例: 定期支払い / 分割払い"></div>
+                                <button type="submit" style="background-color: #27ae60;"><i class="fas fa-layer-group"></i> 分割/定期を一括生成</button>
                             </form>
                         </div>
                         <!-- 残高調整 -->
@@ -144,48 +244,39 @@
                 <!-- 取引履歴 -->
                 <section id="transactions" class="view animated-fade-in">
                     <div class="card">
-                        <div class="filter-bar">
-                            <h3>取引履歴</h3>
-                            <div class="filters">
-                                <select id="status-dropdown" class="form-control"><option value="all">すべて</option><option value="completed">完了のみ</option><option value="scheduled">予定のみ</option></select>
-                                <select id="month-dropdown" class="form-control"></select>
-                            </div>
+                        <div class="tabs-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 15px; max-width: 400px;">
+                            <button type="button" class="tab-btn active" id="history-list-tab">リスト表示</button>
+                            <button type="button" class="tab-btn" id="history-cal-tab">カレンダー表示</button>
                         </div>
-                        <div class="table-wrapper">
-                            <table id="history-table">
-                                <thead><tr><th>状態</th><th>日付</th><th>カテゴリ</th><th>口座</th><th>入金</th><th>出金</th><th>差額</th><th>メモ</th><th>操作</th></tr></thead>
-                                <tbody id="history-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
 
-                <!-- 株式管理 -->
-                <section id="stocks" class="view animated-fade-in">
-                    <div class="content-grid">
-                        <div class="card form-card">
-                            <h3>新規銘柄の追加</h3>
-                            <form id="add-stock-form">
-                                <div class="form-group position-relative">
-                                    <label>銘柄検索 (コードや企業名で検索)</label>
-                                    <input type="text" id="stock-search-input" placeholder="例: 7203, トヨタ, AAPL" autocomplete="off">
-                                    <ul id="stock-search-results" class="search-results-dropdown"></ul>
+                        <div id="history-list-view">
+                            <div class="filter-bar">
+                                <h3>取引履歴</h3>
+                                <div class="filters">
+                                    <select id="status-dropdown" class="form-control"><option value="all">すべて</option><option value="completed">完了のみ</option><option value="scheduled">予定のみ</option></select>
+                                    <select id="month-dropdown" class="form-control"></select>
                                 </div>
-                                <div class="form-group"><label>銘柄コード</label><input type="text" id="stock-code" required></div>
-                                <div class="form-group"><label>銘柄名</label><input type="text" id="stock-name" required></div>
-                                <div class="form-group"><label>買付数量 (小数はS株等)</label><input type="number" id="stock-shares" step="0.001" min="0.001" required></div>
-                                <div class="form-group"><label>取得単価</label><input type="number" id="stock-price" step="0.01" min="0.01" required></div>
-                                <div class="form-group"><label>目標株価 (通知用・任意)</label><input type="number" id="stock-target"></div>
-                                <div class="form-group"><label>リンク口座 (買付・売却代金用)</label><select id="stock-account" required></select></div>
-                                <button type="submit"><i class="fas fa-plus"></i> 銘柄を買付・追加</button>
-                            </form>
-                        </div>
-                        <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
-                            <div class="filter-bar" style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04);">
-                                <h3>保有銘柄一覧</h3>
-                                <button id="refresh-stocks" class="small-btn" style="background-color: var(--secondary-color);"><i class="fas fa-sync-alt"></i> 最新株価を取得</button>
                             </div>
-                            <div id="stocks-list-container" class="stock-list"></div>
+                            <div class="table-wrapper">
+                                <table id="history-table">
+                                    <thead><tr><th>状態</th><th>日付</th><th>カテゴリ</th><th>口座</th><th>入金</th><th>出金</th><th>差額</th><th>メモ</th><th>操作</th></tr></thead>
+                                    <tbody id="history-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="history-cal-view" style="display: none;">
+                            <div class="filter-bar" style="border-bottom: none; margin-bottom: 5px;">
+                                <h3 style="margin-bottom:0;">カレンダー（収支）</h3>
+                            </div>
+                            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                                <button type="button" id="hist-cal-prev" class="small-btn" style="background: transparent; color: var(--secondary-color); font-size:1.2em;"><i class="fas fa-chevron-left"></i></button>
+                                <h3 id="hist-cal-month-year" style="margin: 0; color: var(--secondary-color);">2026年 3月</h3>
+                                <button type="button" id="hist-cal-next" class="small-btn" style="background: transparent; color: var(--secondary-color); font-size:1.2em;"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="calendar-grid" id="history-calendar-grid">
+                                <!-- JSで生成 -->
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -214,7 +305,7 @@
                             <h3>登録済み口座一覧</h3>
                             <div class="table-wrapper">
                                 <table>
-                                    <thead><tr><th>口座名</th><th>現金 (買付余力)</th><th>株式評価額</th><th>口座総資産</th><th>操作</th></tr></thead>
+                                    <thead><tr><th>口座名</th><th>残高</th><th>操作</th></tr></thead>
                                     <tbody id="accounts-table-body"></tbody>
                                 </table>
                             </div>
@@ -288,12 +379,11 @@
             </main>
         </div>
         
-        <!-- モバイルNav (横スクロール対応で全7項目表示) -->
+        <!-- モバイルNav -->
         <nav class="mobile-nav">
             <a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-home"></i><span>ホーム</span></a>
             <a href="#" class="nav-link" data-view="add-transaction"><i class="fas fa-pen-to-square"></i><span>記録</span></a>
             <a href="#" class="nav-link" data-view="transactions"><i class="fas fa-history"></i><span>履歴</span></a>
-            <a href="#" class="nav-link" data-view="stocks"><i class="fas fa-chart-line"></i><span>株式</span></a>
             <a href="#" class="nav-link" data-view="report"><i class="fas fa-chart-pie"></i><span>レポート</span></a>
             <a href="#" class="nav-link" data-view="accounts"><i class="fas fa-wallet"></i><span>口座</span></a>
             <a href="#" class="nav-link" data-view="settings"><i class="fas fa-cog"></i><span>設定</span></a>
@@ -323,20 +413,39 @@
         </div>
     </div>
 
-    <!-- 株式売却モーダル -->
-    <div id="sell-stock-modal" class="modal-overlay">
-        <div class="modal-content animated-zoom-in">
-            <h3>株式の売却</h3>
-            <form id="sell-stock-form">
-                <input type="hidden" id="sell-stock-id">
-                <div class="form-group"><label>売却数</label><input type="number" id="sell-shares" step="0.001" min="0.001" required></div>
-                <div class="form-group"><label>売却単価</label><input type="number" id="sell-price" step="0.01" min="0.01" required></div>
-                <p class="tab-desc">売却代金はリンク口座に自動入金されます。</p>
-                <div class="modal-actions">
-                    <button type="button" class="cancel-btn modal-close">キャンセル</button>
-                    <button type="submit" style="background-color: #2ecc71;">売却を実行</button>
-                </div>
-            </form>
+    <!-- カレンダー設定モーダル -->
+    <div id="calendar-modal" class="modal-overlay">
+        <div class="modal-content animated-zoom-in" style="max-width: 500px;">
+            <h3 style="margin-bottom: 15px;"><i class="fas fa-calendar-alt"></i> カレンダーで日付を設定</h3>
+            
+            <div class="tabs-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 15px; gap: 5px;">
+                <button type="button" class="tab-btn active" data-cal-mode="include" style="padding: 10px 5px; font-size: 0.85em; background: #e8f5e9; color: #27ae60;">追加日</button>
+                <button type="button" class="tab-btn" data-cal-mode="exclude" style="padding: 10px 5px; font-size: 0.85em;">単発除外</button>
+                <button type="button" class="tab-btn" data-cal-mode="period" style="padding: 10px 5px; font-size: 0.85em;">期間除外</button>
+            </div>
+            
+            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <button type="button" id="cal-prev-month" class="small-btn" style="background: transparent; color: var(--secondary-color);"><i class="fas fa-chevron-left"></i></button>
+                <h4 id="cal-month-year" style="margin: 0; color: var(--secondary-color);">2026年 3月</h4>
+                <button type="button" id="cal-next-month" class="small-btn" style="background: transparent; color: var(--secondary-color);"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            
+            <div class="calendar-grid" id="modal-calendar-grid">
+                <div class="cal-day-header">日</div><div class="cal-day-header">月</div><div class="cal-day-header">火</div>
+                <div class="cal-day-header">水</div><div class="cal-day-header">木</div><div class="cal-day-header">金</div><div class="cal-day-header">土</div>
+                <!-- JSでセルを生成 -->
+            </div>
+            
+            <div id="cal-period-list-container" style="display: none; margin-top: 15px;">
+                <p style="font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: var(--secondary-color);">設定済みの除外期間 (クリックで削除)</p>
+                <ul id="cal-period-list" class="account-list" style="font-size: 0.85em; max-height: 100px; overflow-y: auto;"></ul>
+            </div>
+            <p id="cal-period-help" style="display: none; font-size: 0.8em; color: var(--expense-color); margin-top: 10px;">※カレンダーで「開始日」と「終了日」を順番にタップしてください</p>
+
+            <div class="modal-actions">
+                <button type="button" class="cancel-btn modal-close">キャンセル</button>
+                <button type="button" id="cal-apply-btn">適用して閉じる</button>
+            </div>
         </div>
     </div>
 

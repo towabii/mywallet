@@ -1,0 +1,186 @@
+// スプレッドシートのシート名
+const SHEET_NAME = 'Sheet1'; // デフォルトのシート名。必要に応じて変更してください。
+
+// フロントエンドからのPOSTリクエストを処理するメイン関数
+function doPost(e) {
+  let response;
+  try {
+    const request = JSON.parse(e.postData.contents);
+    
+    // アクションに応じて処理を分岐
+    switch (request.action) {
+      case 'signup':
+        response = signup(request.payload);
+        break;
+      case 'login':
+        response = login(request.payload);
+        break;
+      case 'getUserData':
+        response = getUserData(request.payload.userId);
+        break;
+      case 'updateUserData':
+        response = updateUserData(request.payload.userId, request.payload.userData);
+        break;
+      case 'syncData':
+        response = syncData(request.payload);
+        break;
+      case 'changeEmail':
+        response = changeEmail(request.payload);
+        break;
+      case 'changePassword':
+        response = changePassword(request.payload);
+        break;
+      case 'getBackupKey':
+        response = getBackupKey(request.payload);
+        break;
+      default:
+        response = { status: 'error', message: '無効なアクションです。' };
+    }
+  } catch (error) {
+    response = { status: 'error', message: 'サーバーエラー: ' + error.message };
+  }
+  
+  // CORSに対応するためJSON形式でレスポンスを返す
+  return ContentService.createTextOutput(JSON.stringify(response))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ユーザーデータを検索するヘルパー関数
+function findUserBy(key, value) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  // 1行目はヘッダーなので2行目から検索
+  for (let i = 1; i < data.length; i++) {
+    try {
+      const user = JSON.parse(data[i][1]); // B列(index 1)にjsonData
+      if (user[key] === value) {
+        return { user, row: i + 1 };
+      }
+    } catch (e) { /* パースエラーは無視 */ }
+  }
+  return null;
+}
+
+// 新規登録
+function signup(payload) {
+  if (!payload.email || !payload.passwordHash || !payload.backupKeyHash) {
+    return { status: 'error', message: '情報が不足しています。' };
+  }
+  if (findUserBy('email', payload.email)) {
+    return { status: 'error', message: 'このメールアドレスは既に使用されています。' };
+  }
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const userId = new Date().getTime(); // タイムスタンプをユニークIDとして使用
+  const newUser = {
+    id: userId,
+    email: payload.email,
+    passwordHash: payload.passwordHash,
+    backupKeyHash: payload.backupKeyHash,
+    updatedAt: Date.now(),
+    data: { accounts:[], categories: [], transactions:[] }
+  };
+  sheet.appendRow([userId, JSON.stringify(newUser)]);
+  return { status: 'success', message: 'アカウントが作成されました。' };
+}
+
+// ログイン
+function login(payload) {
+  const found = findUserBy('email', payload.email);
+  if (found && found.user.passwordHash === payload.passwordHash) {
+    return { status: 'success', userId: found.user.id };
+  }
+  return { status: 'error', message: 'メールアドレスまたはパスワードが間違っています。' };
+}
+
+// ユーザーデータ取得
+function getUserData(userId) {
+  const found = findUserBy('id', userId);
+  if (found) {
+    return { status: 'success', userData: found.user };
+  }
+  return { status: 'error', message: 'ユーザーが見つかりません。' };
+}
+
+// 同期機能 (タイムスタンプによる競合チェックあり)
+function syncData(payload) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  
+  try {
+    const found = findUserBy('id', payload.userId);
+    if (!found) {
+      return { status: 'error', message: 'ユーザーが見つかりません。' };
+    }
+    
+    const serverUser = found.user;
+    
+    if (serverUser.updatedAt && payload.lastSyncedAt && serverUser.updatedAt > payload.lastSyncedAt) {
+      // サーバー側のデータが新しい場合はコンフリクト
+      return { status: 'conflict', serverData: serverUser };
+    }
+    
+    // 問題なければサーバー側を更新
+    payload.userData.updatedAt = Date.now();
+    sheet.getRange(found.row, 2).setValue(JSON.stringify(payload.userData));
+    
+    return { status: 'success', userData: payload.userData };
+    
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ユーザーデータ強制更新
+function updateUserData(userId, userData) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const found = findUserBy('id', userId);
+  if (found) {
+    sheet.getRange(found.row, 2).setValue(JSON.stringify(userData));
+    return { status: 'success', message: 'データが更新されました。' };
+  }
+  return { status: 'error', message: 'ユーザーが見つかりません。' };
+}
+
+// メールアドレス変更
+function changeEmail(payload) {
+    const found = findUserBy('id', payload.userId);
+    if (!found || found.user.passwordHash !== payload.passwordHash) {
+        return { status: 'error', message: 'パスワードが間違っています。' };
+    }
+    if (findUserBy('email', payload.newEmail)) {
+        return { status: 'error', message: 'このメールアドレスは既に使用されています。'};
+    }
+    found.user.email = payload.newEmail;
+    return updateUserData(payload.userId, found.user);
+}
+
+// パスワード変更
+function changePassword(payload) {
+    const found = findUserBy('id', payload.userId);
+    if (!found || found.user.passwordHash !== payload.currentPasswordHash) {
+        return { status: 'error', message: '現在のパスワードが間違っています。' };
+    }
+    if (found.user.backupKeyHash !== payload.backupKeyHash) {
+        return { status: 'error', message: 'バックアップキーが間違っています。' };
+    }
+    found.user.passwordHash = payload.newPasswordHash;
+    return updateUserData(payload.userId, found.user);
+}
+
+// バックアップキー取得
+function getBackupKey(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000); // 10秒待機
+  
+  try {
+    const found = findUserBy('id', payload.userId);
+    if (found && found.user.passwordHash === payload.passwordHash) {
+      return { status: 'success', backupKeyHash: found.user.backupKeyHash };
+    }
+    return { status: 'error', message: 'パスワードが間違っています。' };
+  } finally {
+    lock.releaseLock();
+  }
+}
