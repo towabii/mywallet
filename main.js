@@ -1,4 +1,4 @@
-const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzkq1mR-frZsQ5IVDiEY55DKh_KiWpESGJJFI3t_ivukx7TBOyk2VUkE-pxxPxn1fel/exec';
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyEXSiaJviDI_PTStiB7tXcDfTZ-k4AmDmXohuiSJwK5mZ3vmPc7JpsL9nvfbEwaSkJ/exec';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- STATE ---
@@ -308,16 +308,22 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.appendChild(empty);
         }
         
-        const txs = state.currentUser.data.transactions.filter(t => t.type !== 'initial' && !t.isScheduled);
+        // 予定を含めて集計する
+        const txs = state.currentUser.data.transactions.filter(t => t.type !== 'initial');
         const mStrPrefix = formatYMD(state.histCal.year, state.histCal.month + 1, 1).substring(0, 8);
         
         const dailyData = {};
         txs.forEach(t => {
             if (t.date.startsWith(mStrPrefix)) {
                 const dStr = t.date;
-                if (!dailyData[dStr]) dailyData[dStr] = { inc: 0, exp: 0 };
-                dailyData[dStr].inc += (t.deposit || 0);
-                dailyData[dStr].exp += (t.withdrawal || 0);
+                if (!dailyData[dStr]) dailyData[dStr] = { inc: 0, exp: 0, sInc: 0, sExp: 0 };
+                if (t.isScheduled) {
+                    dailyData[dStr].sInc += (t.deposit || 0);
+                    dailyData[dStr].sExp += (t.withdrawal || 0);
+                } else {
+                    dailyData[dStr].inc += (t.deposit || 0);
+                    dailyData[dStr].exp += (t.withdrawal || 0);
+                }
             }
         });
 
@@ -330,6 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dailyData[dStr]) {
                 if (dailyData[dStr].inc > 0) html += `<div class="hist-cal-inc">+${dailyData[dStr].inc.toLocaleString()}</div>`;
                 if (dailyData[dStr].exp > 0) html += `<div class="hist-cal-exp">-${dailyData[dStr].exp.toLocaleString()}</div>`;
+                if (dailyData[dStr].sInc > 0) html += `<div class="hist-cal-inc scheduled-text">[予] +${dailyData[dStr].sInc.toLocaleString()}</div>`;
+                if (dailyData[dStr].sExp > 0) html += `<div class="hist-cal-exp scheduled-text">[予] -${dailyData[dStr].sExp.toLocaleString()}</div>`;
             }
             
             cell.innerHTML = html;
@@ -495,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CALENDAR LOGIC ---
     const renderCalendarUI = () => {
         gid('cal-month-year').textContent = `${state.cal.currentYear}年 ${state.cal.currentMonth + 1}月`;
-        const grid = gid('modal-calendar-grid'); // 修正箇所
+        const grid = gid('modal-calendar-grid'); 
         const headers = grid.querySelectorAll('.cal-day-header');
         grid.innerHTML = '';
         headers.forEach(h => grid.appendChild(h));
@@ -702,6 +710,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }));
 
+        qA('input[name="rec-period-type"]').forEach(r => r.addEventListener('change', e => {
+            gid('rec-period-date-wrapper').style.display = 'none';
+            gid('rec-period-days-wrapper').style.display = 'none';
+            gid('rec-period-count-wrapper').style.display = 'none';
+            gid('rec-period-infinite-help').style.display = 'none';
+            
+            gid('rec-end-date').required = false;
+            gid('rec-period-days').required = false;
+            gid('rec-period-count').required = false;
+
+            if (e.target.value === 'date') {
+                gid('rec-period-date-wrapper').style.display = 'block';
+                gid('rec-end-date').required = true;
+            } else if (e.target.value === 'days') {
+                gid('rec-period-days-wrapper').style.display = 'block';
+                gid('rec-period-days').required = true;
+            } else if (e.target.value === 'count') {
+                gid('rec-period-count-wrapper').style.display = 'block';
+                gid('rec-period-count').required = true;
+            } else if (e.target.value === 'infinite') {
+                gid('rec-period-infinite-help').style.display = 'block';
+            }
+        }));
+
         gid('rec-rule-base').addEventListener('change', e => {
             gid('rec-weekly-opts').style.display = e.target.value === 'weekly' ? 'block' : 'none';
             gid('rec-monthly-opts').style.display = e.target.value === 'monthly' ? 'block' : 'none';
@@ -820,8 +852,30 @@ document.addEventListener('DOMContentLoaded', () => {
         gid('recurring-form').onsubmit = async e => {
             e.preventDefault();
             const startDateStr = gid('rec-start-date').value;
-            const endDateStr = gid('rec-end-date').value;
-            if (!startDateStr || !endDateStr || startDateStr > endDateStr) return alert('開始日と終了日を正しく設定してください');
+            if (!startDateStr) return alert('開始日を設定してください');
+
+            const periodType = q('input[name="rec-period-type"]:checked').value;
+            let endDateStr = gid('rec-end-date').value;
+            let targetDays = parseInt(gid('rec-period-days').value) || 0;
+            let targetCount = parseInt(gid('rec-period-count').value) || 0;
+            
+            const startDate = new Date(startDateStr);
+            let endDate = new Date(startDateStr);
+            let limitCount = Infinity;
+
+            if (periodType === 'date') {
+                if (!endDateStr || startDateStr > endDateStr) return alert('終了日を正しく設定してください');
+                endDate = new Date(endDateStr);
+            } else if (periodType === 'days') {
+                if (targetDays <= 0) return alert('日数を正しく設定してください');
+                endDate.setDate(endDate.getDate() + targetDays - 1);
+            } else if (periodType === 'count') {
+                if (targetCount <= 0) return alert('回数を正しく設定してください');
+                endDate.setFullYear(endDate.getFullYear() + 10); // 安全装置
+                limitCount = targetCount;
+            } else if (periodType === 'infinite') {
+                endDate.setFullYear(endDate.getFullYear() + 1); // 安全装置として1年分
+            }
 
             const amtType = q('input[name="rec-amt-type"]:checked').value;
             let fixedAmt = 0;
@@ -834,8 +888,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!totalAmt || totalAmt <= 0) return alert('総額を正しく入力してください');
             }
 
-            const startDate = new Date(startDateStr);
-            const endDate = new Date(endDateStr);
             const rule = gid('rec-rule-base').value;
             const isInc = q('input[name="rec-type"]:checked').value === 'income';
             const aId = parseInt(gid('rec-account-select').value);
@@ -863,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const createdTxs =[];
             let baseId = Date.now();
 
-            while(d <= endDate) {
+            while(d <= endDate && createdTxs.length < limitCount) {
                 let match = false;
                 const dStr = formatDt(d);
                 const dow = d.getDay();
@@ -930,10 +982,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 gid('recurring-form').reset();
                 gid('rec-start-date').value = formatDt(new Date());
                 gid('rec-end-date').value = formatDt(new Date());
+                
                 gid('rec-amt-fixed-wrapper').style.display = 'block';
                 gid('rec-amt-split-wrapper').style.display = 'none';
                 gid('rec-weekly-opts').style.display = 'none';
                 gid('rec-monthly-opts').style.display = 'none';
+                
+                gid('rec-period-date-wrapper').style.display = 'block';
+                gid('rec-period-days-wrapper').style.display = 'none';
+                gid('rec-period-count-wrapper').style.display = 'none';
+                gid('rec-period-infinite-help').style.display = 'none';
+                gid('rec-end-date').required = true;
+                gid('rec-period-days').required = false;
+                gid('rec-period-count').required = false;
                 
                 showToast(`${createdTxs.length}件の予定を一括登録しました`);
                 

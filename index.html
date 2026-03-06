@@ -161,10 +161,24 @@
                                 <div class="form-group mt-20" style="background: #f4f7f6; padding:15px; border-radius:8px; border:1px solid #e1e8ed;">
                                     <label style="color: var(--secondary-color); font-size: 1.05em;"><i class="fas fa-calendar-alt"></i> スケジュールの設定</label>
                                     
-                                    <div class="content-grid mt-20" style="gap:10px; margin-bottom: 15px;">
-                                        <div class="form-group"><label>開始日</label><input type="date" id="rec-start-date" required></div>
-                                        <div class="form-group"><label>終了日</label><input type="date" id="rec-end-date" required></div>
+                                    <div class="form-group mt-20"><label>開始日</label><input type="date" id="rec-start-date" required></div>
+
+                                    <div class="form-group radio-group mt-20">
+                                        <label>期間の指定方法</label>
+                                        <div style="flex-wrap: wrap; gap: 15px; margin-top: 5px;">
+                                            <label><input type="radio" name="rec-period-type" value="date" checked> 終了日を指定</label>
+                                            <label><input type="radio" name="rec-period-type" value="days"> 期間(○○日間)</label>
+                                            <label><input type="radio" name="rec-period-type" value="count"> 回数(○○回)</label>
+                                            <label><input type="radio" name="rec-period-type" value="infinite"> 終了日不明</label>
+                                        </div>
                                     </div>
+
+                                    <div class="content-grid" style="gap:10px; margin-bottom: 15px;">
+                                        <div class="form-group" id="rec-period-date-wrapper"><label>終了日</label><input type="date" id="rec-end-date" required></div>
+                                        <div class="form-group" id="rec-period-days-wrapper" style="display:none;"><label>日数 (開始日含む)</label><input type="number" id="rec-period-days" min="1" placeholder="例: 30"></div>
+                                        <div class="form-group" id="rec-period-count-wrapper" style="display:none;"><label>生成する回数</label><input type="number" id="rec-period-count" min="1" placeholder="例: 12"></div>
+                                    </div>
+                                    <p id="rec-period-infinite-help" style="display:none; font-size:0.85em; color:var(--warning-color); margin-bottom:15px;">※ 終了日不明の場合、安全のため開始日から1年分を自動生成します。</p>
 
                                     <label style="font-weight: bold; color: #2c3e50;">基本の繰り返しルール</label>
                                     <select id="rec-rule-base" style="margin-bottom:15px; border: 1px solid var(--primary-color);">
@@ -267,7 +281,7 @@
 
                         <div id="history-cal-view" style="display: none;">
                             <div class="filter-bar" style="border-bottom: none; margin-bottom: 5px;">
-                                <h3 style="margin-bottom:0;">カレンダー（収支）</h3>
+                                <h3 style="margin-bottom:0;">カレンダー（収支・予定）</h3>
                             </div>
                             <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px;">
                                 <button type="button" id="hist-cal-prev" class="small-btn" style="background: transparent; color: var(--secondary-color); font-size:1.2em;"><i class="fas fa-chevron-left"></i></button>
@@ -375,7 +389,7 @@
                         <button id="logout-btn" class="danger-btn mt-20">ログアウト</button>
                     </div>
                 </section>
-                <footer>&copy;とわ</footer>
+                <footer>&copy;2026 My Wallet</footer>
             </main>
         </div>
         

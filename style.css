@@ -161,6 +161,10 @@ tr:hover { background-color: #fafafa; }
     text-align: right;
     font-weight: bold;
 }
+.scheduled-text {
+    opacity: 0.55;
+    font-style: italic;
+}
 
 /* Mobile Nav */
 .mobile-nav { 
