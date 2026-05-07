@@ -1,4 +1,4 @@
-import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, formatCur, showToast, requestPushPerm } from './utils.js';
+import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, showToast, requestPushPerm } from './utils.js';
 import { callGasApi, syncData, saveUser, initUserData, runChecks, checkAutoExec } from './utils.js';
 import { render, renderHistory, renderCharts, renderHistoryCalendar, renderCalendarUI } from './ui.js';
 
@@ -395,12 +395,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // 修正箇所1：formatCurのインポート漏れを修正したため、正常に表示されます
-        gid('adjust-account-select').onchange = e => {
-            const acc = state.currentUser.data.accounts.find(a => a.id === parseInt(e.target.value));
-            gid('current-app-balance').textContent = acc ? formatCur(acc.balance) : '¥ 0';
-        };
-
         gid('adjust-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('adjust-account-select').value), actual = parseFloat(gid('actual-balance').value);
@@ -490,6 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
         gid('month-dropdown').onchange = e => { state.selectedMonth = e.target.value; renderHistory(); };
         gid('status-dropdown').onchange = e => { state.historyStatus = e.target.value; renderHistory(); };
         gid('report-month-dropdown').onchange = e => { state.reportSelectedMonth = e.target.value; renderCharts(); };
+        gid('adjust-account-select').onchange = e => {
+            const acc = state.currentUser.data.accounts.find(a => a.id === parseInt(e.target.value));
+            gid('current-app-balance').textContent = acc ? formatCur(acc.balance) : '¥ 0';
+        };
 
         gid('budget-form').onsubmit = async e => {
             e.preventDefault();

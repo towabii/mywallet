@@ -45,29 +45,13 @@ export const simpleHash = str => {
     return h.toString();
 };
 
-// 修正箇所2：マイナス金額の表示を「¥ -1,000」から「-¥ 1,000」に改善
-export const formatCur = (v, sign) => {
-    const isNeg = v < 0;
-    const abs = Math.abs(Math.round(v));
-    const prefix = isNeg ? '-' : (sign && v > 0 ? '+' : '');
-    return `${prefix}¥ ${abs.toLocaleString()}`;
-};
-
-// 修正箇所3：toISOString()によるタイムゾーンの時差バグ（日付が1日ずれる現象）を修正
+export const formatCur = (v, sign) => `${sign && v > 0 ? '+' : ''}¥ ${Math.round(v).toLocaleString()}`;
 export const formatDt = d => {
     try {
-        const dateObj = d ? new Date(d) : new Date();
-        if (isNaN(dateObj.getTime())) throw new Error();
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    } catch(e) { 
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
+        if (!d) return formatDt(new Date());
+        return new Date(d).toISOString().split('T')[0];
+    } catch(e) { return new Date().toISOString().split('T')[0]; }
 };
-
 export const formatYMD = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
 export const showToast = msg => {
