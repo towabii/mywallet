@@ -1,10 +1,11 @@
-import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, showToast, requestPushPerm } from './utils.js';
+// --- START OF FILE main.js ---
+
+import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, formatCur, showToast, requestPushPerm } from './utils.js';
 import { callGasApi, syncData, saveUser, initUserData, runChecks, checkAutoExec } from './utils.js';
 import { render, renderHistory, renderCharts, renderHistoryCalendar, renderCalendarUI } from './ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 描画コールバックの設定
     setRenderCallback(render);
 
     const views = qA('.view');
@@ -77,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gid(`tab-${b.dataset.tab}`).classList.add('active');
         });
 
+        // 通常記録の保存
         gid('transaction-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('account-select').value), cId = parseInt(gid('category-select').value) || null, amt = parseFloat(gid('tx-amount').value), isInc = q('input[name="tx-type"]:checked').value === 'income';
@@ -86,9 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             gid('transaction-form').reset();
             gid('date').value = formatDt(new Date());
+            showToast('記録しました'); // 修正: 成功メッセージを追加
             render();
             await saveUser();
         };
+        
         gid('transfer-form').onsubmit = async e => {
             e.preventDefault();
             const f = parseInt(gid('transfer-from').value), t = parseInt(gid('transfer-to').value), amt = parseFloat(gid('transfer-amount').value);
@@ -102,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             render();
             await saveUser();
         };
+        
         gid('scheduled-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('scheduled-account-select').value), amt = parseFloat(gid('scheduled-amount').value), isInc = q('input[name="scheduled-type"]:checked').value === 'income';
@@ -395,6 +400,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        gid('adjust-account-select').onchange = e => {
+            const acc = state.currentUser.data.accounts.find(a => a.id === parseInt(e.target.value));
+            gid('current-app-balance').textContent = acc ? formatCur(acc.balance) : '¥ 0';
+        };
+
         gid('adjust-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('adjust-account-select').value), actual = parseFloat(gid('actual-balance').value);
@@ -484,10 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gid('month-dropdown').onchange = e => { state.selectedMonth = e.target.value; renderHistory(); };
         gid('status-dropdown').onchange = e => { state.historyStatus = e.target.value; renderHistory(); };
         gid('report-month-dropdown').onchange = e => { state.reportSelectedMonth = e.target.value; renderCharts(); };
-        gid('adjust-account-select').onchange = e => {
-            const acc = state.currentUser.data.accounts.find(a => a.id === parseInt(e.target.value));
-            gid('current-app-balance').textContent = acc ? formatCur(acc.balance) : '¥ 0';
-        };
 
         gid('budget-form').onsubmit = async e => {
             e.preventDefault();
@@ -496,15 +502,18 @@ document.addEventListener('DOMContentLoaded', () => {
             render();
             await saveUser();
         };
+        
         gid('add-account-form').onsubmit = async e => {
             e.preventDefault();
             const aId = Date.now(), bal = parseFloat(gid('initial-balance').value);
             state.currentUser.data.accounts.push({ id: aId, name: gid('account-name').value, balance: 0 });
-            if (bal > 0) state.currentUser.data.transactions.push({ id: Date.now() + 1, type: 'initial', accountId: aId, amount: bal });
+            // 修正：マイナスの初期残高（クレカ等）も登録できるように修正
+            if (bal !== 0) state.currentUser.data.transactions.push({ id: Date.now() + 1, type: 'initial', accountId: aId, amount: bal });
             gid('add-account-form').reset();
             render();
             await saveUser();
         };
+        
         gid('add-category-form').onsubmit = async e => {
             e.preventDefault();
             state.currentUser.data.categories.push({ id: Date.now(), name: gid('category-name').value, color: gid('category-color').value, defaultAccountId: parseInt(gid('category-account-link').value) || null });

@@ -22,6 +22,73 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const setupEvents = () => {
+        let calculatorExpression = '';
+        let calculatorJustEvaluated = false;
+        const calculatorOperators = ['+', '-', '*', '/'];
+        const calculatorDisplay = gid('calculator-display');
+        const calculatorExpressionDisplay = gid('calculator-expression');
+        const renderCalculator = () => {
+            calculatorExpressionDisplay.textContent = calculatorExpression ? calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷') : '\u00a0';
+            calculatorDisplay.textContent = calculatorExpression ? calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷') : '0';
+        };
+        const calculate = () => {
+            if (!calculatorExpression || calculatorOperators.includes(calculatorExpression.at(-1))) return;
+            try {
+                if (!/^[0-9+\-*/.]+$/.test(calculatorExpression)) throw new Error('invalid expression');
+                const result = Function(`"use strict"; return (${calculatorExpression})`)();
+                if (!Number.isFinite(result)) throw new Error('invalid result');
+                calculatorExpressionDisplay.textContent = `${calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷')} =`;
+                calculatorDisplay.textContent = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 10 }).format(result);
+                calculatorExpression = String(result);
+            } catch {
+                calculatorDisplay.textContent = 'エラー';
+                calculatorExpression = '';
+            }
+            calculatorJustEvaluated = true;
+        };
+        const inputCalculator = value => {
+            const last = calculatorExpression.at(-1);
+            if (calculatorOperators.includes(value)) {
+                if (!calculatorExpression && value !== '-') return;
+                calculatorExpression = calculatorOperators.includes(last) ? `${calculatorExpression.slice(0, -1)}${value}` : `${calculatorExpression}${value}`;
+                calculatorJustEvaluated = false;
+            } else {
+                if (calculatorJustEvaluated) calculatorExpression = '';
+                const currentNumber = calculatorExpression.split(/[+\-*/]/).at(-1);
+                if (value === '.' && currentNumber.includes('.')) return;
+                calculatorExpression += value;
+                calculatorJustEvaluated = false;
+            }
+            renderCalculator();
+        };
+        gid('open-calculator-btn').onclick = () => gid('calculator-modal').classList.add('visible');
+        qA('.calculator-key').forEach(button => button.onclick = () => {
+            const { calcAction, calcValue } = button.dataset;
+            if (calcAction === 'clear') { calculatorExpression = ''; calculatorJustEvaluated = false; renderCalculator(); }
+            else if (calcAction === 'backspace') { calculatorExpression = calculatorExpression.slice(0, -1); calculatorJustEvaluated = false; renderCalculator(); }
+            else if (calcAction === 'equals') calculate();
+            else if (calcAction === 'percent') {
+                const match = calculatorExpression.match(/-?\d*\.?\d+$/);
+                if (!match) return;
+                calculatorExpression = `${calculatorExpression.slice(0, -match[0].length)}${Number(match[0]) / 100}`;
+                calculatorJustEvaluated = false;
+                renderCalculator();
+            }
+            else inputCalculator(calcValue);
+        });
+        gid('calculator-copy').onclick = async () => {
+            const result = calculatorDisplay.textContent.replaceAll(',', '');
+            if (result === 'エラー') return;
+            try { await navigator.clipboard.writeText(result); showToast('計算結果をコピーしました'); }
+            catch { showToast('コピーできませんでした'); }
+        };
+        document.onkeydown = event => {
+            if (!gid('calculator-modal').classList.contains('visible') || event.target.matches('input, select, textarea')) return;
+            if (/^[0-9.]$/.test(event.key) || calculatorOperators.includes(event.key)) { event.preventDefault(); inputCalculator(event.key); }
+            else if (event.key === 'Enter' || event.key === '=') { event.preventDefault(); calculate(); }
+            else if (event.key === 'Backspace') { event.preventDefault(); calculatorExpression = calculatorExpression.slice(0, -1); calculatorJustEvaluated = false; renderCalculator(); }
+            else if (event.key === 'Escape') { gid('calculator-modal').classList.remove('visible'); }
+        };
         gid('show-signup').onclick = e => {
             e.preventDefault();
             gid('login-form').style.display = 'none';

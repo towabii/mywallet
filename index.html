@@ -48,7 +48,7 @@
                 </ul>
             </nav>
             <main class="main-content">
-                <header class="main-header"><h1 id="main-title">ホーム</h1></header>
+                <header class="main-header"><h1 id="main-title">ホーム</h1><button type="button" id="open-calculator-btn" class="header-calculator-btn" aria-label="電卓を開く"><i class="fas fa-calculator"></i><span>電卓</span></button></header>
                 
                 <!-- ホーム画面 -->
                 <section id="dashboard" class="view active animated-fade-in">
@@ -394,17 +394,36 @@
         </div>
         
         <!-- モバイルNav -->
-        <nav class="mobile-nav">
+        <nav class="mobile-nav" aria-label="メインメニュー">
             <a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-home"></i><span>ホーム</span></a>
-            <a href="#" class="nav-link" data-view="add-transaction"><i class="fas fa-pen-to-square"></i><span>記録</span></a>
             <a href="#" class="nav-link" data-view="transactions"><i class="fas fa-history"></i><span>履歴</span></a>
-            <a href="#" class="nav-link" data-view="report"><i class="fas fa-chart-pie"></i><span>レポート</span></a>
+            <a href="#" class="nav-link mobile-add-button" data-view="add-transaction"><i class="fas fa-pen-to-square"></i><span>記録</span></a>
             <a href="#" class="nav-link" data-view="accounts"><i class="fas fa-wallet"></i><span>口座</span></a>
             <a href="#" class="nav-link" data-view="settings"><i class="fas fa-cog"></i><span>設定</span></a>
         </nav>
     </div>
 
     <!-- 編集モーダル -->
+    <!-- 電卓モーダル -->
+    <div id="calculator-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="calculator-title">
+        <div class="modal-content calculator-modal-content animated-zoom-in">
+            <div class="calculator-modal-header"><h3 id="calculator-title"><i class="fas fa-calculator"></i> 電卓</h3><button type="button" class="calculator-close modal-close" aria-label="閉じる"><i class="fas fa-times"></i></button></div>
+            <div id="calculator-expression" class="calculator-expression" aria-live="polite">&nbsp;</div>
+            <output id="calculator-display" class="calculator-display" aria-live="polite">0</output>
+            <div class="calculator-keypad">
+                <button type="button" class="calculator-key calculator-function" data-calc-action="clear">AC</button>
+                <button type="button" class="calculator-key calculator-function" data-calc-action="backspace" aria-label="1文字削除"><i class="fas fa-delete-left"></i></button>
+                <button type="button" class="calculator-key calculator-operator" data-calc-action="percent">%</button>
+                <button type="button" class="calculator-key calculator-operator" data-calc-value="/">÷</button>
+                <button type="button" class="calculator-key" data-calc-value="7">7</button><button type="button" class="calculator-key" data-calc-value="8">8</button><button type="button" class="calculator-key" data-calc-value="9">9</button><button type="button" class="calculator-key calculator-operator" data-calc-value="*">×</button>
+                <button type="button" class="calculator-key" data-calc-value="4">4</button><button type="button" class="calculator-key" data-calc-value="5">5</button><button type="button" class="calculator-key" data-calc-value="6">6</button><button type="button" class="calculator-key calculator-operator" data-calc-value="-">−</button>
+                <button type="button" class="calculator-key" data-calc-value="1">1</button><button type="button" class="calculator-key" data-calc-value="2">2</button><button type="button" class="calculator-key" data-calc-value="3">3</button><button type="button" class="calculator-key calculator-operator" data-calc-value="+">+</button>
+                <button type="button" class="calculator-key calculator-zero" data-calc-value="0">0</button><button type="button" class="calculator-key" data-calc-value=".">.</button><button type="button" class="calculator-key calculator-equals" data-calc-action="equals">=</button>
+            </div>
+            <button type="button" id="calculator-copy" class="calculator-copy"><i class="fas fa-copy"></i> 結果をコピー</button>
+        </div>
+    </div>
+
     <div id="edit-modal" class="modal-overlay">
         <div class="modal-content animated-zoom-in">
             <h3>取引を編集</h3>
