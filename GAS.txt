@@ -8,6 +8,12 @@ const STORAGE_VERSION = 'chunked-v1';
 const METADATA_COLUMN = 2; // B列
 const FIRST_CHUNK_COLUMN = 3; // C列
 
+// デプロイ確認用: /exec をブラウザで開いたときにJSONが返れば、URLと公開設定は有効です。
+function doGet() {
+  return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // フロントエンドからのPOSTリクエストを処理するメイン関数
 function doPost(e) {
   let response;
@@ -16,8 +22,8 @@ function doPost(e) {
     switch (request.action) {
       case 'signup': response = signup(request.payload); break;
       case 'login': response = login(request.payload); break;
-      case 'getUserData': response = getUserData(request.payload.userId); break;
-      case 'updateUserData': response = updateUserData(request.payload.userId, request.payload.userData); break;
+      case 'getUserData': response = getUserData(request.payload); break;
+      case 'updateUserData': response = updateUserData(request.payload.userId, request.payload.userData, request.payload.authToken); break;
       case 'syncData': response = syncData(request.payload); break;
       case 'changeEmail': response = changeEmail(request.payload); break;
       case 'changePassword': response = changePassword(request.payload); break;
@@ -47,6 +53,18 @@ function withScriptLock_(callback) {
   } finally {
     lock.releaseLock();
   }
+}
+
+const SESSION_TTL_SECONDS = 21600;
+function createSession_(userId) {
+  const token = Utilities.getUuid() + Utilities.getUuid();
+  CacheService.getScriptCache().put('session:' + token, String(userId), SESSION_TTL_SECONDS);
+  return token;
+}
+
+function assertSession_(userId, token) {
+  const sessionUserId = token && CacheService.getScriptCache().get('session:' + token);
+  if (!sessionUserId || String(sessionUserId) !== String(userId)) throw new Error('ログインの有効期限が切れました。もう一度ログインしてください。');
 }
 
 function isChunkedMetadata_(value) {
@@ -206,16 +224,17 @@ function login(payload) {
   return withScriptLock_(function() {
     const found = findUserBy_(getSheet_(), 'email', payload.email);
     if (found && found.user.passwordHash === payload.passwordHash) {
-      return { status: 'success', userId: found.user.id };
+      return { status: 'success', userId: found.user.id, userData: found.user, authToken: createSession_(found.user.id) };
     }
     return { status: 'error', message: 'メールアドレスまたはパスワードが間違っています。' };
   });
 }
 
 // ユーザーデータ取得
-function getUserData(userId) {
+function getUserData(payload) {
   return withScriptLock_(function() {
-    const found = findUserBy_(getSheet_(), 'id', userId);
+    assertSession_(payload.userId, payload.authToken);
+    const found = findUserBy_(getSheet_(), 'id', payload.userId);
     return found
       ? { status: 'success', userData: found.user }
       : { status: 'error', message: 'ユーザーが見つかりません。' };
@@ -225,6 +244,7 @@ function getUserData(userId) {
 // 同期機能（タイムスタンプによる競合チェックあり）
 function syncData(payload) {
   return withScriptLock_(function() {
+    assertSession_(payload.userId, payload.authToken);
     const sheet = getSheet_();
     const found = findUserBy_(sheet, 'id', payload.userId);
     if (!found) return { status: 'error', message: 'ユーザーが見つかりません。' };
@@ -241,7 +261,9 @@ function syncData(payload) {
 
 // ユーザーデータ強制更新
 function updateUserData(userId, userData) {
+  const authToken = arguments[2];
   return withScriptLock_(function() {
+    assertSession_(userId, authToken);
     const sheet = getSheet_();
     const found = findUserBy_(sheet, 'id', userId);
     if (!found) return { status: 'error', message: 'ユーザーが見つかりません。' };
@@ -254,6 +276,7 @@ function updateUserData(userId, userData) {
 // メールアドレス変更
 function changeEmail(payload) {
   return withScriptLock_(function() {
+    assertSession_(payload.userId, payload.authToken);
     const sheet = getSheet_();
     const found = findUserBy_(sheet, 'id', payload.userId);
     if (!found || found.user.passwordHash !== payload.passwordHash) {
@@ -274,6 +297,7 @@ function changeEmail(payload) {
 // パスワード変更
 function changePassword(payload) {
   return withScriptLock_(function() {
+    assertSession_(payload.userId, payload.authToken);
     const sheet = getSheet_();
     const found = findUserBy_(sheet, 'id', payload.userId);
     if (!found || found.user.passwordHash !== payload.currentPasswordHash) {
@@ -293,6 +317,7 @@ function changePassword(payload) {
 // バックアップキー取得
 function getBackupKey(payload) {
   return withScriptLock_(function() {
+    assertSession_(payload.userId, payload.authToken);
     const found = findUserBy_(getSheet_(), 'id', payload.userId);
     if (found && found.user.passwordHash === payload.passwordHash) {
       return { status: 'success', backupKeyHash: found.user.backupKeyHash };

@@ -181,15 +181,9 @@ export const checkAutoExec = () => {
 export async function callGasApi(action, payload, showLd = false) {
     if (showLd) showLoading();
     try {
-        const securedActions = ['getUserData', 'updateUserData', 'syncData', 'changeEmail', 'changePassword', 'getBackupKey'];
-        const authToken = sessionStorage.getItem('authToken') || '';
-
-        if (securedActions.includes(action) && !authToken) {
-            return { status: 'error', message: '未ログインのためサーバー同期はスキップしました。' };
-        }
-
         if (state.isOffline && ['updateUserData'].includes(action)) throw new Error('offline');
-        const requestPayload = securedActions.includes(action) ? { ...payload, authToken } : payload;
+        const securedActions = ['getUserData', 'updateUserData', 'syncData', 'changeEmail', 'changePassword', 'getBackupKey'];
+        const requestPayload = securedActions.includes(action) ? { ...payload, authToken: sessionStorage.getItem('authToken') || '' } : payload;
         const res = await fetch(GAS_WEB_APP_URL, {
             method: 'POST',
             body: JSON.stringify({ action, payload: requestPayload })
@@ -217,16 +211,7 @@ export async function callGasApi(action, payload, showLd = false) {
 }
 
 export async function syncData() {
-    if (!state.currentUser) return;
-
-    const authToken = sessionStorage.getItem('authToken');
-    if (!authToken) {
-        state.hasLocalChanges = false;
-        localStorage.removeItem('localChanges');
-        return;
-    }
-
-    if (!state.hasLocalChanges) return;
+    if (!state.currentUser || !state.hasLocalChanges) return;
     const localData = JSON.parse(localStorage.getItem('localChanges'));
     if (!localData) return;
 

@@ -267,8 +267,13 @@
                             <div class="filter-bar">
                                 <h3>取引履歴</h3>
                                 <div class="filters">
+                                    <input id="history-search" class="form-control" type="search" placeholder="メモ・金額を検索">
                                     <select id="status-dropdown" class="form-control"><option value="all">すべて</option><option value="completed">完了のみ</option><option value="scheduled">予定のみ</option></select>
                                     <select id="month-dropdown" class="form-control"></select>
+                                    <select id="history-account-filter" class="form-control"><option value="all">全口座</option></select>
+                                    <select id="history-category-filter" class="form-control"><option value="all">全カテゴリ</option></select>
+                                    <input id="history-min-amount" class="form-control" type="number" min="0" placeholder="金額以上">
+                                    <input id="history-max-amount" class="form-control" type="number" min="0" placeholder="金額以下">
                                 </div>
                             </div>
                             <div class="table-wrapper">
@@ -387,6 +392,24 @@
                             <button type="submit">バックアップキーを表示</button>
                         </form>
                         <button id="logout-btn" class="danger-btn mt-20">ログアウト</button>
+                    </div>
+
+                    <div class="content-grid mt-20">
+                        <div class="card form-card">
+                            <h3>バックアップと復元</h3>
+                            <p class="tab-desc">端末にバックアップを保存し、必要なときだけ復元できます。</p>
+                            <div class="action-buttons" style="margin-top:12px;">
+                                <button type="button" id="backup-export-btn"><i class="fas fa-download"></i> バックアップを保存</button>
+                                <button type="button" id="backup-import-btn"><i class="fas fa-upload"></i> バックアップを復元</button>
+                                <input type="file" id="backup-import-file" accept="application/json,.json" hidden>
+                            </div>
+                        </div>
+                        <div class="card form-card">
+                            <h3>データ管理</h3>
+                            <p id="data-integrity-status" class="tab-desc">データを確認中…</p>
+                            <p id="monthly-snapshot-status" class="tab-desc"></p>
+                            <button type="button" id="csv-export-btn"><i class="fas fa-file-csv"></i> 取引をCSV出力</button>
+                        </div>
                     </div>
                 </section>
                 <footer>&copy;2026 My Wallet</footer>

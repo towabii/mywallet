@@ -1,11 +1,11 @@
-// --- START OF FILE main.js ---
-
 import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, formatCur, showToast, requestPushPerm } from './utils.js';
-import { callGasApi, syncData, saveUser, initUserData, runChecks, checkAutoExec } from './utils.js';
+import { callGasApi, syncData, saveUser, initUserData, validateUserData, runChecks, checkAutoExec } from './utils.js';
 import { render, renderHistory, renderCharts, renderHistoryCalendar, renderCalendarUI } from './ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    let eventsAreSetup = false;
 
+    // 描画コールバックの設定
     setRenderCallback(render);
 
     const views = qA('.view');
@@ -23,6 +23,75 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const setupEvents = () => {
+        if (eventsAreSetup) return;
+        eventsAreSetup = true;
+        let calculatorExpression = '';
+        let calculatorJustEvaluated = false;
+        const calculatorOperators = ['+', '-', '*', '/'];
+        const calculatorDisplay = gid('calculator-display');
+        const calculatorExpressionDisplay = gid('calculator-expression');
+        const renderCalculator = () => {
+            calculatorExpressionDisplay.textContent = calculatorExpression ? calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷') : '\u00a0';
+            calculatorDisplay.textContent = calculatorExpression ? calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷') : '0';
+        };
+        const calculate = () => {
+            if (!calculatorExpression || calculatorOperators.includes(calculatorExpression.at(-1))) return;
+            try {
+                if (!/^[0-9+\-*/.]+$/.test(calculatorExpression)) throw new Error('invalid expression');
+                const result = Function(`"use strict"; return (${calculatorExpression})`)();
+                if (!Number.isFinite(result)) throw new Error('invalid result');
+                calculatorExpressionDisplay.textContent = `${calculatorExpression.replaceAll('*', '×').replaceAll('/', '÷')} =`;
+                calculatorDisplay.textContent = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 10 }).format(result);
+                calculatorExpression = String(result);
+            } catch {
+                calculatorDisplay.textContent = 'エラー';
+                calculatorExpression = '';
+            }
+            calculatorJustEvaluated = true;
+        };
+        const inputCalculator = value => {
+            const last = calculatorExpression.at(-1);
+            if (calculatorOperators.includes(value)) {
+                if (!calculatorExpression && value !== '-') return;
+                calculatorExpression = calculatorOperators.includes(last) ? `${calculatorExpression.slice(0, -1)}${value}` : `${calculatorExpression}${value}`;
+                calculatorJustEvaluated = false;
+            } else {
+                if (calculatorJustEvaluated) calculatorExpression = '';
+                const currentNumber = calculatorExpression.split(/[+\-*/]/).at(-1);
+                if (value === '.' && currentNumber.includes('.')) return;
+                calculatorExpression += value;
+                calculatorJustEvaluated = false;
+            }
+            renderCalculator();
+        };
+        gid('open-calculator-btn').onclick = () => gid('calculator-modal').classList.add('visible');
+        qA('.calculator-key').forEach(button => button.onclick = () => {
+            const { calcAction, calcValue } = button.dataset;
+            if (calcAction === 'clear') { calculatorExpression = ''; calculatorJustEvaluated = false; renderCalculator(); }
+            else if (calcAction === 'backspace') { calculatorExpression = calculatorExpression.slice(0, -1); calculatorJustEvaluated = false; renderCalculator(); }
+            else if (calcAction === 'equals') calculate();
+            else if (calcAction === 'percent') {
+                const match = calculatorExpression.match(/-?\d*\.?\d+$/);
+                if (!match) return;
+                calculatorExpression = `${calculatorExpression.slice(0, -match[0].length)}${Number(match[0]) / 100}`;
+                calculatorJustEvaluated = false;
+                renderCalculator();
+            }
+            else inputCalculator(calcValue);
+        });
+        gid('calculator-copy').onclick = async () => {
+            const result = calculatorDisplay.textContent.replaceAll(',', '');
+            if (result === 'エラー') return;
+            try { await navigator.clipboard.writeText(result); showToast('計算結果をコピーしました'); }
+            catch { showToast('コピーできませんでした'); }
+        };
+        document.onkeydown = event => {
+            if (!gid('calculator-modal').classList.contains('visible') || event.target.matches('input, select, textarea')) return;
+            if (/^[0-9.]$/.test(event.key) || calculatorOperators.includes(event.key)) { event.preventDefault(); inputCalculator(event.key); }
+            else if (event.key === 'Enter' || event.key === '=') { event.preventDefault(); calculate(); }
+            else if (event.key === 'Backspace') { event.preventDefault(); calculatorExpression = calculatorExpression.slice(0, -1); calculatorJustEvaluated = false; renderCalculator(); }
+            else if (event.key === 'Escape') { gid('calculator-modal').classList.remove('visible'); }
+        };
         gid('show-signup').onclick = e => {
             e.preventDefault();
             gid('login-form').style.display = 'none';
@@ -41,7 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }, true);
             if (res && res.status === 'success') {
                 localStorage.setItem('uid', res.userId);
-                init();
+                sessionStorage.setItem('authToken', res.authToken);
+                init(res.userData);
             }
         };
         gid('signup-form').onsubmit = async e => {
@@ -78,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
             gid(`tab-${b.dataset.tab}`).classList.add('active');
         });
 
-        // 通常記録の保存
         gid('transaction-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('account-select').value), cId = parseInt(gid('category-select').value) || null, amt = parseFloat(gid('tx-amount').value), isInc = q('input[name="tx-type"]:checked').value === 'income';
@@ -88,11 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             gid('transaction-form').reset();
             gid('date').value = formatDt(new Date());
-            showToast('記録しました'); // 修正: 成功メッセージを追加
             render();
             await saveUser();
         };
-        
         gid('transfer-form').onsubmit = async e => {
             e.preventDefault();
             const f = parseInt(gid('transfer-from').value), t = parseInt(gid('transfer-to').value), amt = parseFloat(gid('transfer-amount').value);
@@ -106,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
             render();
             await saveUser();
         };
-        
         gid('scheduled-form').onsubmit = async e => {
             e.preventDefault();
             const aId = parseInt(gid('scheduled-account-select').value), amt = parseFloat(gid('scheduled-amount').value), isInc = q('input[name="scheduled-type"]:checked').value === 'income';
@@ -400,6 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // 修正箇所1：formatCurのインポート漏れを修正したため、正常に表示されます
         gid('adjust-account-select').onchange = e => {
             const acc = state.currentUser.data.accounts.find(a => a.id === parseInt(e.target.value));
             gid('current-app-balance').textContent = acc ? formatCur(acc.balance) : '¥ 0';
@@ -493,6 +560,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gid('month-dropdown').onchange = e => { state.selectedMonth = e.target.value; renderHistory(); };
         gid('status-dropdown').onchange = e => { state.historyStatus = e.target.value; renderHistory(); };
+        gid('history-search').oninput = e => { state.historySearch = e.target.value; renderHistory(); };
+        gid('history-account-filter').onchange = e => { state.historyAccount = e.target.value; renderHistory(); };
+        gid('history-category-filter').onchange = e => { state.historyCategory = e.target.value; renderHistory(); };
+        gid('history-min-amount').oninput = e => { state.historyMinAmount = e.target.value; renderHistory(); };
+        gid('history-max-amount').oninput = e => { state.historyMaxAmount = e.target.value; renderHistory(); };
         gid('report-month-dropdown').onchange = e => { state.reportSelectedMonth = e.target.value; renderCharts(); };
 
         gid('budget-form').onsubmit = async e => {
@@ -502,18 +574,15 @@ document.addEventListener('DOMContentLoaded', () => {
             render();
             await saveUser();
         };
-        
         gid('add-account-form').onsubmit = async e => {
             e.preventDefault();
             const aId = Date.now(), bal = parseFloat(gid('initial-balance').value);
             state.currentUser.data.accounts.push({ id: aId, name: gid('account-name').value, balance: 0 });
-            // 修正：マイナスの初期残高（クレカ等）も登録できるように修正
-            if (bal !== 0) state.currentUser.data.transactions.push({ id: Date.now() + 1, type: 'initial', accountId: aId, amount: bal });
+            if (bal > 0) state.currentUser.data.transactions.push({ id: Date.now() + 1, type: 'initial', accountId: aId, amount: bal });
             gid('add-account-form').reset();
             render();
             await saveUser();
         };
-        
         gid('add-category-form').onsubmit = async e => {
             e.preventDefault();
             state.currentUser.data.categories.push({ id: Date.now(), name: gid('category-name').value, color: gid('category-color').value, defaultAccountId: parseInt(gid('category-account-link').value) || null });
@@ -543,11 +612,58 @@ document.addEventListener('DOMContentLoaded', () => {
             }, true);
             if (res) { alert('ローカルキーと一致確認済'); gid('show-backup-key-form').reset(); }
         };
+
+        const download = (filename, content, type) => {
+            const url = URL.createObjectURL(new Blob([content], { type }));
+            const link = document.createElement('a');
+            link.href = url; link.download = filename; link.click();
+            URL.revokeObjectURL(url);
+        };
+        gid('backup-export-btn').onclick = () => {
+            const backup = { schemaVersion: 1, exportedAt: new Date().toISOString(), userData: state.currentUser };
+            download(`mywallet-backup-${formatDt(new Date())}.json`, JSON.stringify(backup, null, 2), 'application/json');
+            showToast('バックアップを保存しました');
+        };
+        gid('backup-import-btn').onclick = () => gid('backup-import-file').click();
+        gid('backup-import-file').onchange = async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const parsed = JSON.parse(await file.text());
+                const restored = parsed.userData || parsed;
+                const check = validateUserData(restored);
+                if (!check.valid) throw new Error(check.message);
+                if (!confirm('現在のデータをバックアップ内容で置き換えます。よろしいですか？')) return;
+                restored.id = state.currentUser.id;
+                restored.email = state.currentUser.email;
+                restored.passwordHash = state.currentUser.passwordHash;
+                restored.backupKeyHash = state.currentUser.backupKeyHash;
+                state.currentUser = initUserData(restored);
+                await saveUser();
+                render();
+                showToast('バックアップを復元しました');
+            } catch (error) {
+                showToast(`復元できませんでした: ${error.message}`);
+            } finally { e.target.value = ''; }
+        };
+        gid('csv-export-btn').onclick = () => {
+            const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+            const rows = state.currentUser.data.transactions.map(tx => {
+                const account = state.currentUser.data.accounts.find(a => a.id === tx.accountId)?.name || '';
+                const toAccount = state.currentUser.data.accounts.find(a => a.id === tx.toAccountId)?.name || '';
+                const category = state.currentUser.data.categories.find(c => c.id === tx.categoryId)?.name || '';
+                return [tx.id, tx.date || '', tx.isScheduled ? '予定' : '完了', tx.type || '通常', account, toAccount, category, tx.deposit || 0, tx.withdrawal || 0, tx.amount || 0, tx.memo || ''];
+            });
+            const csv = ['ID,日付,状態,種別,口座,振替先,カテゴリ,入金,出金,振替額,メモ', ...rows.map(row => row.map(escape).join(','))].join('\r\n');
+            download(`mywallet-transactions-${formatDt(new Date())}.csv`, '\ufeff' + csv, 'text/csv;charset=utf-8');
+        };
     };
 
-    const init = async () => {
+    const init = async (preloadedUser = null) => {
         const uid = localStorage.getItem('uid');
-        if (uid) {
+        if (preloadedUser) {
+            state.currentUser = initUserData(preloadedUser);
+        } else if (uid) {
             let userStr = localStorage.getItem('localChanges');
             if (userStr) {
                 state.currentUser = initUserData(JSON.parse(userStr));
@@ -556,8 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await callGasApi('getUserData', { userId: parseInt(uid) }, true);
                 if (res && res.userData) state.currentUser = initUserData(res.userData);
             }
+        }
 
-            if (state.currentUser) {
+        if (state.currentUser) {
                 state.selectedMonth = localStorage.getItem(`selectedMonth_${state.currentUser.id}`) || 'all';
                 gid('auth-view').style.display = 'none';
                 gid('app-view').style.display = 'block';
@@ -569,19 +686,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setupEvents();
                 requestPushPerm();
-                await syncData();
+                if (sessionStorage.getItem('authToken')) {
+                    await syncData();
+                }
                 
                 const hasChanged = checkAutoExec();
                 if (hasChanged) await saveUser();
                 
                 render();
                 runChecks();
-            } else {
-                localStorage.removeItem('uid');
-                gid('auth-view').style.display = 'flex';
-                setupEvents();
-            }
         } else {
+            localStorage.removeItem('uid');
+            sessionStorage.removeItem('authToken');
             gid('auth-view').style.display = 'flex';
             setupEvents();
         }

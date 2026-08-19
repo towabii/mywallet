@@ -1,8 +1,9 @@
 import { state, setRenderCallback, gid, q, qA, simpleHash, formatDt, formatCur, showToast, requestPushPerm } from './utils.js';
-import { callGasApi, syncData, saveUser, initUserData, runChecks, checkAutoExec } from './utils.js';
+import { callGasApi, syncData, saveUser, initUserData, validateUserData, runChecks, checkAutoExec } from './utils.js';
 import { render, renderHistory, renderCharts, renderHistoryCalendar, renderCalendarUI } from './ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    let eventsAreSetup = false;
 
     // 描画コールバックの設定
     setRenderCallback(render);
@@ -22,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const setupEvents = () => {
+        if (eventsAreSetup) return;
+        eventsAreSetup = true;
         let calculatorExpression = '';
         let calculatorJustEvaluated = false;
         const calculatorOperators = ['+', '-', '*', '/'];
@@ -107,7 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }, true);
             if (res && res.status === 'success') {
                 localStorage.setItem('uid', res.userId);
-                init();
+                sessionStorage.setItem('authToken', res.authToken);
+                init(res.userData);
             }
         };
         gid('signup-form').onsubmit = async e => {
@@ -556,6 +560,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gid('month-dropdown').onchange = e => { state.selectedMonth = e.target.value; renderHistory(); };
         gid('status-dropdown').onchange = e => { state.historyStatus = e.target.value; renderHistory(); };
+        gid('history-search').oninput = e => { state.historySearch = e.target.value; renderHistory(); };
+        gid('history-account-filter').onchange = e => { state.historyAccount = e.target.value; renderHistory(); };
+        gid('history-category-filter').onchange = e => { state.historyCategory = e.target.value; renderHistory(); };
+        gid('history-min-amount').oninput = e => { state.historyMinAmount = e.target.value; renderHistory(); };
+        gid('history-max-amount').oninput = e => { state.historyMaxAmount = e.target.value; renderHistory(); };
         gid('report-month-dropdown').onchange = e => { state.reportSelectedMonth = e.target.value; renderCharts(); };
 
         gid('budget-form').onsubmit = async e => {
@@ -603,11 +612,58 @@ document.addEventListener('DOMContentLoaded', () => {
             }, true);
             if (res) { alert('ローカルキーと一致確認済'); gid('show-backup-key-form').reset(); }
         };
+
+        const download = (filename, content, type) => {
+            const url = URL.createObjectURL(new Blob([content], { type }));
+            const link = document.createElement('a');
+            link.href = url; link.download = filename; link.click();
+            URL.revokeObjectURL(url);
+        };
+        gid('backup-export-btn').onclick = () => {
+            const backup = { schemaVersion: 1, exportedAt: new Date().toISOString(), userData: state.currentUser };
+            download(`mywallet-backup-${formatDt(new Date())}.json`, JSON.stringify(backup, null, 2), 'application/json');
+            showToast('バックアップを保存しました');
+        };
+        gid('backup-import-btn').onclick = () => gid('backup-import-file').click();
+        gid('backup-import-file').onchange = async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const parsed = JSON.parse(await file.text());
+                const restored = parsed.userData || parsed;
+                const check = validateUserData(restored);
+                if (!check.valid) throw new Error(check.message);
+                if (!confirm('現在のデータをバックアップ内容で置き換えます。よろしいですか？')) return;
+                restored.id = state.currentUser.id;
+                restored.email = state.currentUser.email;
+                restored.passwordHash = state.currentUser.passwordHash;
+                restored.backupKeyHash = state.currentUser.backupKeyHash;
+                state.currentUser = initUserData(restored);
+                await saveUser();
+                render();
+                showToast('バックアップを復元しました');
+            } catch (error) {
+                showToast(`復元できませんでした: ${error.message}`);
+            } finally { e.target.value = ''; }
+        };
+        gid('csv-export-btn').onclick = () => {
+            const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+            const rows = state.currentUser.data.transactions.map(tx => {
+                const account = state.currentUser.data.accounts.find(a => a.id === tx.accountId)?.name || '';
+                const toAccount = state.currentUser.data.accounts.find(a => a.id === tx.toAccountId)?.name || '';
+                const category = state.currentUser.data.categories.find(c => c.id === tx.categoryId)?.name || '';
+                return [tx.id, tx.date || '', tx.isScheduled ? '予定' : '完了', tx.type || '通常', account, toAccount, category, tx.deposit || 0, tx.withdrawal || 0, tx.amount || 0, tx.memo || ''];
+            });
+            const csv = ['ID,日付,状態,種別,口座,振替先,カテゴリ,入金,出金,振替額,メモ', ...rows.map(row => row.map(escape).join(','))].join('\r\n');
+            download(`mywallet-transactions-${formatDt(new Date())}.csv`, '\ufeff' + csv, 'text/csv;charset=utf-8');
+        };
     };
 
-    const init = async () => {
+    const init = async (preloadedUser = null) => {
         const uid = localStorage.getItem('uid');
-        if (uid) {
+        if (preloadedUser) {
+            state.currentUser = initUserData(preloadedUser);
+        } else if (uid) {
             let userStr = localStorage.getItem('localChanges');
             if (userStr) {
                 state.currentUser = initUserData(JSON.parse(userStr));
@@ -616,8 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await callGasApi('getUserData', { userId: parseInt(uid) }, true);
                 if (res && res.userData) state.currentUser = initUserData(res.userData);
             }
+        }
 
-            if (state.currentUser) {
+        if (state.currentUser) {
                 state.selectedMonth = localStorage.getItem(`selectedMonth_${state.currentUser.id}`) || 'all';
                 gid('auth-view').style.display = 'none';
                 gid('app-view').style.display = 'block';
@@ -629,19 +686,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setupEvents();
                 requestPushPerm();
-                await syncData();
+                if (sessionStorage.getItem('authToken')) {
+                    await syncData();
+                }
                 
                 const hasChanged = checkAutoExec();
                 if (hasChanged) await saveUser();
                 
                 render();
                 runChecks();
-            } else {
-                localStorage.removeItem('uid');
-                gid('auth-view').style.display = 'flex';
-                setupEvents();
-            }
         } else {
+            localStorage.removeItem('uid');
+            sessionStorage.removeItem('authToken');
             gid('auth-view').style.display = 'flex';
             setupEvents();
         }

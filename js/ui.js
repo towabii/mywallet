@@ -1,4 +1,4 @@
-import { state, recalcBalances, triggerRender } from './utils.js';
+import { state, recalcBalances, triggerRender, validateUserData, buildMonthlySnapshots } from './utils.js';
 import { q, qA, gid, formatCur, formatDt, formatYMD } from './utils.js';
 
 export const renderDropdowns = () => {
@@ -52,6 +52,13 @@ export const renderHistory = () => {
     }
     if (state.historyStatus === 'completed') txs = txs.filter(t => !t.isScheduled);
     if (state.historyStatus === 'scheduled') txs = txs.filter(t => t.isScheduled);
+    if (state.historyAccount !== 'all') txs = txs.filter(t => String(t.accountId) === state.historyAccount || String(t.toAccountId) === state.historyAccount);
+    if (state.historyCategory !== 'all') txs = txs.filter(t => String(t.categoryId) === state.historyCategory);
+    const search = state.historySearch.trim().toLowerCase();
+    if (search) txs = txs.filter(t => `${t.memo || ''} ${t.deposit || ''} ${t.withdrawal || ''} ${t.amount || ''}`.toLowerCase().includes(search));
+    const min = Number(state.historyMinAmount), max = Number(state.historyMaxAmount);
+    if (state.historyMinAmount !== '') txs = txs.filter(t => Math.max(t.deposit || 0, t.withdrawal || 0, t.amount || 0) >= min);
+    if (state.historyMaxAmount !== '') txs = txs.filter(t => Math.max(t.deposit || 0, t.withdrawal || 0, t.amount || 0) <= max);
 
     txs.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).forEach(tx => {
         const tr = document.createElement('tr');
@@ -151,6 +158,8 @@ export const renderAccounts = () => {
             <td class="action-buttons"><button class="del-acc" data-id="${a.id}"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     }).join('');
+    const accountFilter = gid('history-account-filter');
+    if (accountFilter) accountFilter.innerHTML = '<option value="all">全口座</option>' + accs.map(a => `<option value="${a.id}" ${String(a.id) === state.historyAccount ? 'selected' : ''}>${a.name}</option>`).join('');
     if (gid('adjust-account-select').value)
         gid('current-app-balance').textContent = formatCur(accs.find(a => a.id === parseInt(gid('adjust-account-select').value))?.balance || 0);
 };
@@ -169,6 +178,8 @@ export const renderCategories = () => {
     });
     gid('category-account-link').innerHTML = `<option value="">設定しない</option>` + accs.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
     gid('categories-table-body').innerHTML = cats.map(c => `<tr><td><span class="category-tag" style="background-color:${c.color}">${c.name}</span></td><td>${accs.find(a => a.id === c.defaultAccountId)?.name || 'なし'}</td><td class="action-buttons"><button class="del-cat" data-id="${c.id}"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+    const categoryFilter = gid('history-category-filter');
+    if (categoryFilter) categoryFilter.innerHTML = '<option value="all">全カテゴリ</option>' + cats.map(c => `<option value="${c.id}" ${String(c.id) === state.historyCategory ? 'selected' : ''}>${c.name}</option>`).join('');
 };
 
 export const renderCharts = () => {
@@ -448,4 +459,11 @@ export const render = async () => {
     renderAccounts();
     renderCategories();
     renderCharts();
+    const integrity = validateUserData(state.currentUser);
+    const integrityEl = gid('data-integrity-status');
+    if (integrityEl) integrityEl.textContent = integrity.valid ? `✓ データ整合性: ${integrity.message}` : `⚠ データ整合性: ${integrity.message}`;
+    const snapshots = state.currentUser.data.monthlySnapshots?.length ? state.currentUser.data.monthlySnapshots : buildMonthlySnapshots(state.currentUser);
+    const latestSnapshot = snapshots.at(-1);
+    const snapshotEl = gid('monthly-snapshot-status');
+    if (snapshotEl) snapshotEl.textContent = latestSnapshot ? `月次スナップショット: ${latestSnapshot.month} / ${formatCur(latestSnapshot.total)}` : '月次スナップショット: 取引を登録すると作成されます。';
 };
