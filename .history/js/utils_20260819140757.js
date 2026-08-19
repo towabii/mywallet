@@ -182,7 +182,7 @@ export async function callGasApi(action, payload, showLd = false) {
     if (showLd) showLoading();
     try {
         const securedActions = ['getUserData', 'updateUserData', 'syncData', 'changeEmail', 'changePassword', 'getBackupKey'];
-        const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        const authToken = sessionStorage.getItem('authToken') || '';
 
         if (securedActions.includes(action) && !authToken) {
             return { status: 'error', message: '未ログインのためサーバー同期はスキップしました。' };
@@ -219,7 +219,7 @@ export async function callGasApi(action, payload, showLd = false) {
 export async function syncData() {
     if (!state.currentUser) return;
 
-    const authToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
         state.hasLocalChanges = false;
         localStorage.removeItem('localChanges');

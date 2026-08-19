@@ -110,8 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, true);
             if (res && res.status === 'success') {
                 localStorage.setItem('uid', res.userId);
-                localStorage.setItem('authToken', res.authToken);
-                sessionStorage.removeItem('authToken');
+                sessionStorage.setItem('authToken', res.authToken);
                 init(res.userData);
             }
         };
@@ -128,8 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gid('logout-btn').onclick = () => {
             if (confirm('ログアウトしますか？')) {
                 localStorage.removeItem('uid');
-                localStorage.removeItem('authToken');
-                sessionStorage.removeItem('authToken');
                 location.reload();
             }
         };
@@ -689,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setupEvents();
                 requestPushPerm();
-                if (localStorage.getItem('authToken') || sessionStorage.getItem('authToken')) {
+                if (sessionStorage.getItem('authToken')) {
                     await syncData();
                 }
                 
@@ -700,7 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 runChecks();
         } else {
             localStorage.removeItem('uid');
-            localStorage.removeItem('authToken');
             sessionStorage.removeItem('authToken');
             gid('auth-view').style.display = 'flex';
             setupEvents();
