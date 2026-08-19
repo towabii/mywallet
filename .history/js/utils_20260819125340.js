@@ -1,5 +1,5 @@
 // --- CONSTANTS ---
-export const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyEXSiaJviDI_PTStiB7tXcDfTZ-k4AmDmXohuiSJwK5mZ3vmPc7JpsL9nvfbEwaSkJ/exec';
+export const GAS_WEB_APP_URL = '';
 
 // --- STATE ---
 export const state = {

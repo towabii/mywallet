@@ -1,7 +1,5 @@
-// --- START OF FILE utils.js ---
-
 // --- CONSTANTS ---
-export const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyEXSiaJviDI_PTStiB7tXcDfTZ-k4AmDmXohuiSJwK5mZ3vmPc7JpsL9nvfbEwaSkJ/exec';
+export const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby0Fj-n6oxewyH4Om1A6kzZwUF4l3721zNT1gcyD76zk7JrtWvGGxGVEl5wTgyc1yL1/exec';
 
 // --- STATE ---
 export const state = {
@@ -27,6 +25,7 @@ export const state = {
     }
 };
 
+// 再描画用のコールバック（循環参照を避けるための工夫）
 let renderCallback = null;
 export const setRenderCallback = (cb) => { renderCallback = cb; };
 export const triggerRender = () => { if (renderCallback) renderCallback(); };
@@ -46,6 +45,7 @@ export const simpleHash = str => {
     return h.toString();
 };
 
+// 修正箇所2：マイナス金額の表示を「¥ -1,000」から「-¥ 1,000」に改善
 export const formatCur = (v, sign) => {
     const isNeg = v < 0;
     const abs = Math.abs(Math.round(v));
@@ -53,6 +53,7 @@ export const formatCur = (v, sign) => {
     return `${prefix}¥ ${abs.toLocaleString()}`;
 };
 
+// 修正箇所3：toISOString()によるタイムゾーンの時差バグ（日付が1日ずれる現象）を修正
 export const formatDt = d => {
     try {
         const dateObj = d ? new Date(d) : new Date();
@@ -68,16 +69,6 @@ export const formatDt = d => {
 };
 
 export const formatYMD = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-// Safari等のブラウザ依存クラッシュを防ぐ安全なDate生成関数を追加
-export const parseDateSafe = (dateString) => {
-    if (!dateString) return new Date();
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    }
-    return new Date(dateString);
-};
 
 export const showToast = msg => {
     const t = document.createElement('div');
@@ -109,7 +100,7 @@ export const recalcBalances = () => {
     state.currentUser.data.accounts.forEach(acc => {
         acc.balance = state.currentUser.data.transactions.find(tx => tx.accountId === acc.id && tx.type === 'initial')?.amount || 0;
     });
-    const validTx = state.currentUser.data.transactions.filter(tx => tx.type !== 'initial' && !tx.isScheduled).sort((a, b) => parseDateSafe(a.date) - parseDateSafe(b.date));
+    const validTx = state.currentUser.data.transactions.filter(tx => tx.type !== 'initial' && !tx.isScheduled).sort((a, b) => new Date(a.date) - new Date(b.date));
     validTx.forEach(tx => {
         if (tx.type === 'transfer') {
             const f = state.currentUser.data.accounts.find(a => a.id === tx.accountId);
